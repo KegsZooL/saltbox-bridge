@@ -6,6 +6,6 @@ rest_cherrypy:
 
 external_auth:
   rest:
-    ^url: http://fastms-application:8000/salt_auth
+    ^url: http://fastms-core:8000/salt_auth
 
 keep_acl_in_token: True
