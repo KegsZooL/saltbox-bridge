@@ -1,10 +1,9 @@
-ARG ALPINE_VERSION
-ARG PYTHON_VERSION
+ARG ALPINE_VERSION='3.18'
+ARG PYTHON_VERSION='3.10'
 
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} AS salt-base
 
-ARG ALPINE_VERSION
-ARG SALT_VERSION
+ARG SALT_VERSION='3006.7'
 
 ARG BUILD_DEPS="gcc g++ autoconf make libffi-dev libgit2-dev"
 
@@ -30,6 +29,8 @@ RUN \
     su - salt -c 'salt-run salt.cmd tls.create_self_signed_cert'
 
 FROM salt-base AS salt-master
+LABEL name='fastms-salt-master' version='0.1'
+# FIXME
 COPY master.yaml /etc/salt/master.d/master.conf
 COPY api.yaml /etc/salt/master.d/api.conf
 COPY netapi.yaml /etc/salt/master.d/netapi.conf
@@ -43,5 +44,6 @@ EXPOSE 4505 4506 8000
 
 
 FROM salt-base AS salt-minion
+LABEL name='fastms-salt-minion' version='0.1'
 COPY ./minion.yaml /etc/salt/minion.d/minion.conf
 CMD ["/usr/local/bin/salt-minion"]
