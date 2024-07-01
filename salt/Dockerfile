@@ -7,37 +7,42 @@ ARG SALT_VERSION='3006.7'
 
 ARG BUILD_DEPS="gcc g++ autoconf make libffi-dev libgit2-dev"
 
-RUN \
-    apk add --no-cache binutils libgit2 libffi openssl-dev && \
-    addgroup -g 450 -S salt && adduser -s /bin/sh -SD -G salt salt && \
-    mkdir -p /etc/pki /etc/salt/pki /etc/salt/minion.d/ /etc/salt/master.d \
-        /etc/salt/proxy.d /var/cache/salt /var/log/salt /var/run/salt && \
-    chmod -R 2775 /etc/pki /etc/salt /var/cache/salt /var/log/salt /var/run/salt && \
-    chgrp -R salt /etc/pki /etc/salt /var/cache/salt /var/log/salt /var/run/salt
+RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked <<EOF
+set -e
+apk add binutils libgit2 libffi openssl-dev
+addgroup -g 450 -S salt && adduser -s /bin/sh -SD -G salt salt
+mkdir -p /etc/pki /etc/salt/pki /etc/salt/minion.d/ /etc/salt/master.d \
+    /etc/salt/proxy.d /var/cache/salt /var/log/salt /var/run/salt
+chmod -R 2775 /etc/pki /etc/salt /var/cache/salt /var/log/salt /var/run/salt
+chgrp -R salt /etc/pki /etc/salt /var/cache/salt /var/log/salt /var/run/salt
+EOF
 
-VOLUME /etc/salt/
-
 RUN \
-    echo "cython<3" > /tmp/constraint.txt && \
-    apk add --no-cache $BUILD_DEPS && \
-    PIP_CONSTRAINT=/tmp/constraint.txt USE_STATIC_REQUIREMENTS=1 \
-        pip3 install --no-build-isolation --no-cache-dir \
-        pyOpenSSL \
-        salt=="${SALT_VERSION}" "$(if [ "${ALPINE_VERSION}" = "3.14" ]; \
-        then echo 'pygit2<1.7'; else echo 'pygit2<1.12'; fi)" && \
-    apk del $BUILD_DEPS && \
-    su - salt -c 'salt-run salt.cmd tls.create_self_signed_cert'
+  --mount=type=cache,target=/var/cache/apk/,sharing=locked \
+  --mount=type=cache,target=/root/.cache/pip/ \
+<<EOF
+set -e
+echo 'cython<3' > /root/constraint.txt
+apk add $BUILD_DEPS
+PIP_CONSTRAINT=/root/constraint.txt USE_STATIC_REQUIREMENTS=1 \
+    pip3 install --no-build-isolation \
+    pyOpenSSL "salt==${SALT_VERSION}" 'pygit2<1.12'
+rm /root/constraint.txt
+apk del $BUILD_DEPS
+su - salt -c 'salt-run salt.cmd tls.create_self_signed_cert'
+EOF
+
 
 FROM salt-base AS salt-master
-LABEL name='fastms-salt-master' version='0.1'
-# FIXME
-COPY master.yaml /etc/salt/master.d/master.conf
-COPY api.yaml /etc/salt/master.d/api.conf
-COPY netapi.yaml /etc/salt/master.d/netapi.conf
-COPY redis_bridge.py /srv/salt_extmod/engines/redis_bridge.py
-COPY requirements.txt /tmp/requirements.txt
-COPY supervisor.conf /etc/supervisor.conf
-RUN pip3 install --no-cache-dir --upgrade -r /tmp/requirements.txt
+LABEL name='fastms-salt-master' version='0.2'
+RUN \
+  --mount=type=bind,target=/mnt/ \
+  --mount=type=cache,target=/root/.cache/pip/ \
+  pip3 install --upgrade -r /mnt/requirements.txt
+COPY master.conf api.conf netapi.conf /etc/salt/master.d/
+COPY redis_bridge.py /srv/salt_extmod/engines/
+COPY supervisor.conf /etc/
+
 ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
 CMD ["/usr/local/bin/supervisord", "--configuration", "/etc/supervisor.conf"]
 EXPOSE 4505 4506 8000
