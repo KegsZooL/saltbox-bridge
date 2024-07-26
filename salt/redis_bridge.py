@@ -17,10 +17,12 @@ Restart salt-master. Log and exceptions will be in salt-master log.
 import logging
 import re
 
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 import redis
 
+from salt.exceptions import SaltRunnerError, SaltMasterError
 from salt.utils.event import get_master_event
 from salt.utils import json
 
@@ -35,7 +37,29 @@ def __virtual__() -> Union[bool, tuple[bool, str]]:
     return True
 
 
+JID_REGEX = (
+    r'^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})'
+    r'(?P<minute>\d{2})(?P<second>\d{2})(?P<microsecond>\d{6})$'
+)
+JID_PATTERN = re.compile(JID_REGEX)
+
+
+def jid_to_epoch(jid: str) -> float:
+    if not (match := JID_PATTERN.match(jid)):
+        raise SaltMasterError('Unexpected JID format: %s', jid)
+
+    kwargs = {k: int(val) for k, val in match.groupdict().items()}
+
+    try:
+        dt = datetime(**kwargs, tzinfo=timezone.utc)
+    except ValueError as err:
+        raise SaltRunnerError(err)
+
+    return dt.timestamp()
+
+
 class RedisPusher:
+
     def __init__(self, host: str, port: int, db: int) -> None:
         self.redis = redis.Redis(host=host, port=port, db=db)
 
@@ -57,7 +81,7 @@ class RedisPusher:
             # (but on salt/job/*/ret/* it is)
             jid = match.group('jid')
             LOGGER.info('New job: %s', jid)
-            self.redis.zadd(name='jobs', mapping={body: int(jid)})
+            self.redis.zadd(name='jobs', mapping={body: jid_to_epoch(jid)})
             # _stamp keyword will not be in websocket message
             self.redis.publish(channel=f'job:{jid}', message=body)
             return
