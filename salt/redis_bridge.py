@@ -61,8 +61,15 @@ def jid_to_epoch(jid: str) -> float:
 
 
 class RedisPusher:
-    def __init__(self, host: str, port: int, db: int) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        db: int,
+        expire: int | None = None
+    ) -> None:
         self.redis = redis.Redis(host=host, port=port, db=db)
+        self.expire = expire
 
     async def process(self, event: Optional[dict]) -> None:
         # TODO Make separate tag handlers
@@ -79,14 +86,11 @@ class RedisPusher:
 
         if match := tag_new.match(tag):
             # Mention: on salt-call call there is no salt/job/*/new event
-            # (but on salt/job/*/ret/* it is)
+            # (but salt/job/*/ret/* it is)
             jid = match.group('jid')
             LOGGER.info('New job: %s', jid)
-            async with self.redis.pipeline(transaction=True) as pipe:
-                await pipe\
-                    .zadd(name='jobs', mapping={body: jid_to_epoch(jid)})\
-                    .execute()
-            # _stamp keyword will not be in websocket message
+            # TODO Cleanup old
+            await self.redis.zadd(name='jobs', mapping={body: jid_to_epoch(jid)})
             await self.redis.publish(channel=f'job:{jid}', message=body)
             return
 
@@ -95,14 +99,19 @@ class RedisPusher:
             mid = match.group('mid')
             LOGGER.info('New job return: %s: %s', jid, mid)
 
-            await self.redis.hset(name=f'job.rets:{jid}', key=mid, value=body)
+            async with self.redis.pipeline(transaction=True) as pipe:
+                name = f'job.rets:{jid}'
+                pipe = pipe.hset(name=name, key=mid, value=body)
+                if self.expire is not None:
+                    pipe = pipe.expire(name=name, time=self.expire)
+                await pipe.execute()
             await self.redis.publish(channel=f'job.rets:{jid}', message=body)
             return
 
 
 async def _async_start(host: str, port: int, db: int, expire) -> None:
     sock_dir = __opts__['sock_dir']
-    pusher = RedisPusher(host=host, port=port, db=db)
+    pusher = RedisPusher(host=host, port=port, db=db, expire=expire)
 
     with get_master_event(__opts__, sock_dir, listen=True) as event_bus:
         while True:
