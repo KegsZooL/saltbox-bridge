@@ -13,18 +13,20 @@ Put the module to /srv/salt_extmod/engines/redis_bridge.py
 
 Restart salt-master. Log and exceptions will be in salt-master log.
 """
+from __future__ import annotations
 
+import asyncio
 import logging
 import re
 
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-import redis
+import redis.asyncio as redis
 
-from salt.exceptions import SaltRunnerError, SaltMasterError
-from salt.utils.event import get_master_event
-from salt.utils import json
+from salt.exceptions import SaltRunnerError, SaltMasterError  # type: ignore
+from salt.utils.event import get_master_event  # type: ignore
+from salt.utils import json  # type: ignore
 
 LOGGER = logging.getLogger(__name__)
 __opts__: dict
@@ -59,11 +61,10 @@ def jid_to_epoch(jid: str) -> float:
 
 
 class RedisPusher:
-
     def __init__(self, host: str, port: int, db: int) -> None:
         self.redis = redis.Redis(host=host, port=port, db=db)
 
-    def process(self, event: Optional[dict]) -> None:
+    async def process(self, event: Optional[dict]) -> None:
         # TODO Make separate tag handlers
         if not event:
             return
@@ -81,9 +82,12 @@ class RedisPusher:
             # (but on salt/job/*/ret/* it is)
             jid = match.group('jid')
             LOGGER.info('New job: %s', jid)
-            self.redis.zadd(name='jobs', mapping={body: jid_to_epoch(jid)})
+            async with self.redis.pipeline(transaction=True) as pipe:
+                await pipe\
+                    .zadd(name='jobs', mapping={body: jid_to_epoch(jid)})\
+                    .execute()
             # _stamp keyword will not be in websocket message
-            self.redis.publish(channel=f'job:{jid}', message=body)
+            await self.redis.publish(channel=f'job:{jid}', message=body)
             return
 
         elif match := tag_ret.match(tag):
@@ -91,15 +95,25 @@ class RedisPusher:
             mid = match.group('mid')
             LOGGER.info('New job return: %s: %s', jid, mid)
 
-            self.redis.hset(name=f'job.rets:{jid}', key=mid, value=body)
-            self.redis.publish(channel=f'job.rets:{jid}', message=body)
+            await self.redis.hset(name=f'job.rets:{jid}', key=mid, value=body)
+            await self.redis.publish(channel=f'job.rets:{jid}', message=body)
             return
 
 
-def start(host='localhost', port=6379, db=0) -> None:
+async def _async_start(host: str, port: int, db: int, expire) -> None:
     sock_dir = __opts__['sock_dir']
     pusher = RedisPusher(host=host, port=port, db=db)
 
     with get_master_event(__opts__, sock_dir, listen=True) as event_bus:
         while True:
-            pusher.process(event_bus.get_event(full=True))
+            await pusher.process(event_bus.get_event(full=True))
+
+
+def start(
+    host: str = 'localhost',
+    port: int = 6379,
+    db: int = 0,
+    expire: int | None = None,
+) -> None:
+    coro = _async_start(host=host, port=port, db=db, expire=expire)
+    asyncio.run(coro)
