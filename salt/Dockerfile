@@ -34,13 +34,15 @@ EOF
 
 
 FROM salt-base AS salt-master
-LABEL name='fastms-salt-master' version='0.2'
+LABEL name='fastms-salt-master'
+LABEL version='0.3'
 RUN \
   --mount=type=bind,target=/mnt/ \
   --mount=type=cache,target=/root/.cache/pip/ \
   pip3 install --upgrade -r /mnt/requirements.txt
-COPY master.conf api.conf netapi.conf /etc/salt/master.d/
-COPY redis_bridge.py /srv/salt_extmod/engines/
+COPY config/master.conf config/api.conf config/netapi.conf /etc/salt/master.d/
+COPY engines /srv/salt_extmod/engines/
+COPY runners /srv/salt_extmod/runners/
 COPY supervisor.conf /etc/
 
 ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
@@ -49,6 +51,7 @@ EXPOSE 4505 4506 8000
 
 
 FROM salt-base AS salt-minion
-LABEL name='fastms-salt-minion' version='0.1'
-COPY ./minion.yaml /etc/salt/minion.d/minion.conf
+LABEL name='fastms-salt-minion'
+LABEL version='0.2'
+COPY ./config/minion.yaml /etc/salt/minion.d/minion.conf
 CMD ["/usr/local/bin/salt-minion"]
