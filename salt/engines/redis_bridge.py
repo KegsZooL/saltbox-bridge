@@ -75,30 +75,31 @@ class MessageHanlerBase(abc.ABC):
     @abc.abstractmethod
     def TAG_PATTERN(self) -> re.Pattern[str]: ...
 
-    async def handle(self, tag: str, body: Any) -> None:
+    async def handle(self, tag: str, data: dict[str, Any]) -> None:
         """
         If tag matches TAG_PATTERN, process message
 
         :raises: StopProcessing when no need to process the message with other handlers
         """
         if match := self.TAG_PATTERN.match(tag):
-            return await self.process(match, body)
+            return await self.process(match, data)
 
     @abc.abstractmethod
-    async def process(self, match: re.Match, body: Any) -> None:
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         """ Take action on message """
 
 
 class MessageHandlerNew(MessageHanlerBase):
     TAG_PATTERN = re.compile(r'salt/job/(?P<jid>[\d]{20})/new')
 
-    async def process(self, match: re.Match, body: Any) -> None:
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         # Mention: on salt-call call there is no salt/job/*/new event
         # (but salt/job/*/ret/* it is)
         jid = match.group('jid')
+        data_json = json.dumps(data)
         LOGGER.info('New job: %s', jid)
-        await self.redis_client.zadd(name='jobs', mapping={body: jid_to_epoch(jid)})
-        await self.redis_client.publish(channel=f'job:{jid}', message=body)
+        await self.redis_client.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
+        await self.redis_client.publish(channel=f'job:{jid}', message=data_json)
         raise StopProcessing()
 
 
@@ -109,28 +110,41 @@ class MessageHanlerReturn(MessageHanlerBase):
         self.expire = expire
         super().__init__(redis)
 
-    async def process(self, match: re.Match, body: Any) -> None:
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         jid = match.group('jid')
         mid = match.group('mid')
-        LOGGER.info('New job return: %s: %s', jid, mid)
+        function = data['fun']
+        data_json = json.dumps(data)
+
+        LOGGER.info('Job %s return for %s, function %s', jid, mid, function)
 
         async with self.redis_client.pipeline(transaction=True) as pipe:
             name = f'job.rets:{jid}'
-            pipe = pipe.hset(name=name, key=mid, value=body)
+            pipe = pipe.hset(name=name, key=mid, value=data_json)
             if self.expire is not None:
                 pipe = pipe.expire(name=name, time=self.expire)
             await pipe.execute()
-        await self.redis_client.publish(channel=f'job.rets:{jid}', message=body)
+
+        await self.redis_client.publish(channel=f'job.rets:{jid}', message=data_json)
+
+        if function == 'grains.items':
+            await self._process_grains(mid, data['return'])
+
         raise StopProcessing()
 
+    async def _process_grains(self, mid: str, grains: dict[str, Any]) -> None:
+        LOGGER.debug('Processing grains for %s', mid)
+        if not grains:
+            return
 
-class MessageHandlerGrainsItems(MessageHanlerBase):
-    # TODO
-    TAG_PATTERN = re.compile(r'$^')
+        mapping = {k: json.dumps(val) for k, val in grains.items()}
 
-    # TODO
-    async def process(self, match: re.Match, body: Any) -> None:
-        ...
+        async with self.redis_client.pipeline(transaction=True) as pipe:
+            name = f'minion:{mid}:grains'
+            pipe = pipe.hset(name=name, mapping=mapping)  # type: ignore
+            if self.expire is not None:
+                pipe = pipe.expire(name=name, time=self.expire)
+            await pipe.execute()
 
 
 class RedisPusher:
@@ -145,7 +159,6 @@ class RedisPusher:
         self.handlers = [
             MessageHandlerNew(redis_client),
             MessageHanlerReturn(redis_client, expire=expire),
-            MessageHandlerGrainsItems(redis_client),
         ]
 
     async def process(self, event: dict | None) -> None:
@@ -153,13 +166,13 @@ class RedisPusher:
             return
 
         tag = event['tag']
-        body = json.dumps(event['data'])
+        data = event['data']
 
         LOGGER.debug('%s got event with tag "%s"', __name__, tag)
 
         for handler in self.handlers:
             try:
-                await handler.handle(tag, body)
+                await handler.handle(tag, data)
             except StopProcessing:
                 LOGGER.debug('End message processing')
                 return
