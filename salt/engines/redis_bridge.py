@@ -115,17 +115,17 @@ class MessageHanlerReturn(MessageHanlerBase):
         mid = match.group('mid')
         function = data['fun']
         data_json = json.dumps(data)
+        hash_name = f'job:{jid}:return'
 
         LOGGER.info('Job %s return for %s, function %s', jid, mid, function)
 
         async with self.redis_client.pipeline(transaction=True) as pipe:
-            name = f'job.rets:{jid}'
-            pipe = pipe.hset(name=name, key=mid, value=data_json)
+            pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
             if self.expire is not None:
-                pipe = pipe.expire(name=name, time=self.expire)
+                pipe = pipe.expire(name=hash_name, time=self.expire)
             await pipe.execute()
 
-        await self.redis_client.publish(channel=f'job.rets:{jid}', message=data_json)
+        await self.redis_client.publish(channel=hash_name, message=data_json)
 
         if function == 'grains.items':
             await self._process_grains(mid, data['return'])
