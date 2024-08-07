@@ -99,7 +99,7 @@ class MessageHandlerNew(MessageHanlerBase):
         data_json = json.dumps(data)
         LOGGER.info('New job: %s', jid)
         await self.redis_client.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
-        await self.redis_client.publish(channel=f'job:{jid}', message=data_json)
+        await self.redis_client.publish(channel=f'job:{jid}:new', message=data_json)
         raise StopProcessing()
 
 
@@ -139,12 +139,13 @@ class MessageHanlerReturn(MessageHanlerBase):
 
         mapping = {k: json.dumps(val) for k, val in grains.items()}
 
+        hash_name = f'minion:{mid}:grains'
         async with self.redis_client.pipeline(transaction=True) as pipe:
-            name = f'minion:{mid}:grains'
-            pipe = pipe.hset(name=name, mapping=mapping)  # type: ignore
+            pipe = pipe.hset(name=hash_name, mapping=mapping)  # type: ignore
             if self.expire is not None:
-                pipe = pipe.expire(name=name, time=self.expire)
+                pipe = pipe.expire(name=hash_name, time=self.expire)
             await pipe.execute()
+        await self.redis_client.publish(channel=hash_name, message=json.dumps(grains))
 
 
 class RedisPusher:
