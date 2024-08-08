@@ -15,12 +15,13 @@ Restart salt-master. Log and exceptions will be in salt-master log.
 """
 from __future__ import annotations
 
+import abc
 import asyncio
 import logging
 import re
 
 from datetime import datetime, timezone
-from typing import Optional, Union
+from typing import Any
 
 import redis.asyncio as redis
 
@@ -33,7 +34,7 @@ __opts__: dict
 __salt__: dict
 
 
-def __virtual__() -> Union[bool, tuple[bool, str]]:
+def __virtual__() -> bool | tuple[bool, str]:
     if __opts__['__role'] != 'master':
         return False, f'{__name__} runs on master only'
     return True
@@ -60,6 +61,93 @@ def jid_to_epoch(jid: str) -> float:
     return dt.timestamp()
 
 
+class StopProcessing(Exception):
+    """
+    Raising of StopProcessing is signal a message is no need further processing
+    """
+
+
+class MessageHanlerBase(abc.ABC):
+    def __init__(self, redis_client: redis.Redis) -> None:
+        self.redis_client = redis_client
+
+    @property
+    @abc.abstractmethod
+    def TAG_PATTERN(self) -> re.Pattern[str]: ...
+
+    async def handle(self, tag: str, data: dict[str, Any]) -> None:
+        """
+        If tag matches TAG_PATTERN, process message
+
+        :raises: StopProcessing when no need to process the message with other handlers
+        """
+        if match := self.TAG_PATTERN.match(tag):
+            return await self.process(match, data)
+
+    @abc.abstractmethod
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+        """ Take action on message """
+
+
+class MessageHandlerNew(MessageHanlerBase):
+    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>[\d]{20})/new')
+
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+        # Mention: on salt-call call there is no salt/job/*/new event
+        # (but salt/job/*/ret/* it is)
+        jid = match.group('jid')
+        data_json = json.dumps(data)
+        LOGGER.info('New job: %s', jid)
+        await self.redis_client.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
+        await self.redis_client.publish(channel=f'job:{jid}:new', message=data_json)
+        raise StopProcessing()
+
+
+class MessageHanlerReturn(MessageHanlerBase):
+    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>[\d]{20})/ret/(?P<mid>.+)')
+
+    def __init__(self, redis: redis.Redis, expire: int | None) -> None:
+        self.expire = expire
+        super().__init__(redis)
+
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+        jid = match.group('jid')
+        mid = match.group('mid')
+        function = data['fun']
+        data_json = json.dumps(data)
+        hash_name = f'job:{jid}:return'
+
+        LOGGER.info('Job %s return for %s, function %s', jid, mid, function)
+
+        async with self.redis_client.pipeline(transaction=True) as pipe:
+            pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
+            if self.expire is not None:
+                pipe = pipe.expire(name=hash_name, time=self.expire)
+            await pipe.execute()
+
+        await self.redis_client.publish(channel=hash_name, message=data_json)
+
+        if function == 'grains.items':
+            await self._process_grains(mid, data['return'])
+
+        raise StopProcessing()
+
+    async def _process_grains(self, mid: str, grains: dict[str, Any]) -> None:
+        LOGGER.debug('Processing grains for %s', mid)
+        if not grains:
+            return
+
+        mapping = {k: json.dumps(val) for k, val in grains.items()}
+
+        hash_name = f'minion:{mid}:grains'
+        async with self.redis_client.pipeline(transaction=True) as pipe:
+            pipe = pipe.hset(name=hash_name, mapping=mapping)  # type: ignore
+            if self.expire is not None:
+                pipe = pipe.expire(name=hash_name, time=self.expire)
+            await pipe.execute()
+        await self.redis_client.publish(channel=hash_name, message=json.dumps(grains))
+
+
 class RedisPusher:
     def __init__(
         self,
@@ -68,45 +156,27 @@ class RedisPusher:
         db: int,
         expire: int | None = None
     ) -> None:
-        self.redis = redis.Redis(host=host, port=port, db=db)
-        self.expire = expire
+        redis_client = redis.Redis(host=host, port=port, db=db)
+        self.handlers = [
+            MessageHandlerNew(redis_client),
+            MessageHanlerReturn(redis_client, expire=expire),
+        ]
 
-    async def process(self, event: Optional[dict]) -> None:
-        # TODO Make separate tag handlers
+    async def process(self, event: dict | None) -> None:
         if not event:
             return
 
-        tag_new = re.compile(r'salt/job/(?P<jid>[\d]{20})/new')
-        tag_ret = re.compile(r'salt/job/(?P<jid>[\d]{20})/ret/(?P<mid>.+)')
-
         tag = event['tag']
-        body = json.dumps(event['data'])
+        data = event['data']
 
         LOGGER.debug('%s got event with tag "%s"', __name__, tag)
 
-        if match := tag_new.match(tag):
-            # Mention: on salt-call call there is no salt/job/*/new event
-            # (but salt/job/*/ret/* it is)
-            jid = match.group('jid')
-            LOGGER.info('New job: %s', jid)
-            # TODO Cleanup old
-            await self.redis.zadd(name='jobs', mapping={body: jid_to_epoch(jid)})
-            await self.redis.publish(channel=f'job:{jid}', message=body)
-            return
-
-        elif match := tag_ret.match(tag):
-            jid = match.group('jid')
-            mid = match.group('mid')
-            LOGGER.info('New job return: %s: %s', jid, mid)
-
-            async with self.redis.pipeline(transaction=True) as pipe:
-                name = f'job.rets:{jid}'
-                pipe = pipe.hset(name=name, key=mid, value=body)
-                if self.expire is not None:
-                    pipe = pipe.expire(name=name, time=self.expire)
-                await pipe.execute()
-            await self.redis.publish(channel=f'job.rets:{jid}', message=body)
-            return
+        for handler in self.handlers:
+            try:
+                await handler.handle(tag, data)
+            except StopProcessing:
+                LOGGER.debug('End message processing')
+                return
 
 
 async def _async_start(host: str, port: int, db: int, expire) -> None:
