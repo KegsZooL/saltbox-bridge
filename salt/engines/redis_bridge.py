@@ -145,8 +145,9 @@ class MessageHanlerReturn(MessageHanlerBase):
             if self.expire is not None:
                 pipe = pipe.expire(name=hash_name, time=self.expire)
             await pipe.execute()
-        await self.redis_client.publish(channel=hash_name, message=json.dumps(grains))
-
+        dumped_grains = json.dumps(grains)
+        await self.redis_client.publish(channel=hash_name, message=dumped_grains)
+        await self.redis_client.publish(channel='grains', message=dumped_grains)
 
 class RedisPusher:
     def __init__(
