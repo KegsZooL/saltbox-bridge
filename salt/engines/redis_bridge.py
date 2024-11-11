@@ -149,15 +149,24 @@ class MessageHanlerReturn(MessageHanlerBase):
         await self.redis_client.publish(channel=hash_name, message=dumped_grains)
         await self.redis_client.publish(channel='grains', message=dumped_grains)
 
+
 class RedisPusher:
     def __init__(
         self,
         host: str,
         port: int,
         db: int,
+        username: str | None = None,
+        password: str | None = None,
         expire: int | None = None
     ) -> None:
-        redis_client = redis.Redis(host=host, port=port, db=db)
+        redis_client = redis.Redis(
+            host=host,
+            port=port,
+            db=db,
+            username=username,
+            password=password,
+        )
         self.handlers = [
             MessageHandlerNew(redis_client),
             MessageHanlerReturn(redis_client, expire=expire),
@@ -180,9 +189,9 @@ class RedisPusher:
                 return
 
 
-async def _async_start(host: str, port: int, db: int, expire) -> None:
+async def _async_start(**kwargs) -> None:
     sock_dir = __opts__['sock_dir']
-    pusher = RedisPusher(host=host, port=port, db=db, expire=expire)
+    pusher = RedisPusher(**kwargs)
 
     with get_master_event(__opts__, sock_dir, listen=True) as event_bus:
         while True:
@@ -192,8 +201,17 @@ async def _async_start(host: str, port: int, db: int, expire) -> None:
 def start(
     host: str = 'localhost',
     port: int = 6379,
+    username: str | None = None,
+    password: str | None = None,
     db: int = 0,
     expire: int | None = None,
 ) -> None:
-    coro = _async_start(host=host, port=port, db=db, expire=expire)
+    coro = _async_start(**{
+        'host': host,
+        'port': port,
+        'username': username,
+        'password': password,
+        'db': db,
+        'expire': expire,
+    })
     asyncio.run(coro)

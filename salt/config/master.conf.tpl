@@ -5,6 +5,8 @@ auto_accept: true
 engines:
   - redis_bridge:
       host: redis-salt
+      username: default
+      password: ${REDIS_PASSWORD}
       # Time to live for job returns and grains (sec)
       expire: 604800
 schedule:

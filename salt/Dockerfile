@@ -33,28 +33,24 @@ su - salt -c 'salt-run salt.cmd tls.create_self_signed_cert'
 EOF
 
 
-FROM alpine:${ALPINE_VERSION} AS envsubstr
-ARG SALT_API_USER
-RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked apk add gettext
-RUN --mount=type=bind,target=/mnt/ \
-  envsubst '$SALT_API_USER' < /mnt/config/api.conf.tpl > /root/api.conf
-
-
 FROM salt-base AS salt-master
 LABEL name='fastms-salt-master'
-LABEL version='0.3'
+LABEL version='0.4'
+RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
+  apk add gettext-envsubst
 RUN \
   --mount=type=bind,target=/mnt/ \
   --mount=type=cache,target=/root/.cache/pip/ \
   pip3 install --upgrade -r /mnt/requirements.txt
-COPY config/master.conf config/netapi.conf /etc/salt/master.d/
-COPY --from=envsubstr /root/api.conf /etc/salt/master.d/
+COPY config/netapi.conf /etc/salt/master.d/
+COPY config/master.conf.tpl config/api.conf.tpl /root/templates/
 
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
-COPY write_auth_file.sh /usr/local/bin/
+COPY prepare_configs.sh /usr/local/bin/
 COPY supervisor.conf /etc/
 
+ENV SALT_API_USER=fastms_core
 ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
 CMD ["/usr/local/bin/supervisord", "--configuration", "/etc/supervisor.conf"]
 EXPOSE 4505 4506 8000
