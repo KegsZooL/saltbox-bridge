@@ -3,7 +3,7 @@
 set -e
 
 error() {
-  e>&2 echo "$1"
+  >&2 echo "$1"
   exit 1
 }
 
