@@ -9,6 +9,7 @@ error() {
 
 SALT_API_PASSWORD="$(cat /run/secrets/salt_api_password)"
 REDIS_PASSWORD="$(cat /run/secrets/redis_salt_password)"
+export SALT_API_USER REDIS_PASSWORD
 
 [ -z "$SALT_API_USER" ] && error 'Missing SALT_API_USER value'
 [ -z "$SALT_API_PASSWORD" ] && error 'Missing SALT_API_PASSWORD value'
