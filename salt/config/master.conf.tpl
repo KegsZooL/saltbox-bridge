@@ -5,8 +5,10 @@ auto_accept: true
 engines:
   - redis_bridge:
       host: redis-salt
-      username: default
-      password: ${REDIS_PASSWORD}
+      username: '${REDIS_USERNAME}'
+      password: '${REDIS_PASSWORD}'
+      ssl: true
+      ssl_ca_certs: '/etc/redis/certs/ca.crt'
       # Time to live for job returns and grains (sec)
       expire: 604800
 schedule:

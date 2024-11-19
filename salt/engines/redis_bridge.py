@@ -21,7 +21,7 @@ import logging
 import re
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 import redis.asyncio as redis
 
@@ -153,20 +153,9 @@ class MessageHanlerReturn(MessageHanlerBase):
 class RedisPusher:
     def __init__(
         self,
-        host: str,
-        port: int,
-        db: int,
-        username: str | None = None,
-        password: str | None = None,
+        redis_client: redis.Redis,
         expire: int | None = None
     ) -> None:
-        redis_client = redis.Redis(
-            host=host,
-            port=port,
-            db=db,
-            username=username,
-            password=password,
-        )
         self.handlers = [
             MessageHandlerNew(redis_client),
             MessageHanlerReturn(redis_client, expire=expire),
@@ -189,9 +178,9 @@ class RedisPusher:
                 return
 
 
-async def _async_start(**kwargs) -> None:
+async def _async_start(redis_client: redis.Redis, expire: int | None) -> None:
     sock_dir = __opts__['sock_dir']
-    pusher = RedisPusher(**kwargs)
+    pusher = RedisPusher(redis_client, expire)
 
     with get_master_event(__opts__, sock_dir, listen=True) as event_bus:
         while True:
@@ -204,14 +193,48 @@ def start(
     username: str | None = None,
     password: str | None = None,
     db: int = 0,
+    ssl=False,
+    ssl_cert_reqs: Literal['none', 'optional', 'required'] = 'required',
+    ssl_ca_certs: str | None = None,
     expire: int | None = None,
 ) -> None:
-    coro = _async_start(**{
-        'host': host,
-        'port': port,
-        'username': username,
-        'password': password,
-        'db': db,
-        'expire': expire,
-    })
+    """
+    host
+        Redis client connection host
+
+    port
+        Redis client connection port
+
+    username
+        Redis client allowed username
+
+    password
+        Redis client user password
+
+    db
+        Redis client database index
+
+    ssl
+        Redis client TLS encryption flag
+
+    ssl_cert_reqs
+        Redis client validation policy
+
+    ssl_ca_certs
+        Redis client path to server root certs concatenated file
+
+    expire
+        Time of records live in seconds
+    """
+    redis_client = redis.Redis(
+        host=host,
+        port=port,
+        db=db,
+        username=username,
+        password=password,
+        ssl=ssl,
+        ssl_cert_reqs=ssl_cert_reqs,
+        ssl_ca_certs=ssl_ca_certs,
+    )
+    coro = _async_start(redis_client, expire=expire)
     asyncio.run(coro)

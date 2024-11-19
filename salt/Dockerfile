@@ -35,7 +35,7 @@ EOF
 
 FROM salt-base AS salt-master
 LABEL name='fastms-salt-master'
-LABEL version='0.4'
+LABEL version='0.5'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
 RUN \
@@ -52,6 +52,7 @@ COPY supervisor.conf /etc/
 
 ENV SALT_API_USER=fastms_core
 ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
+ENV REDIS_USERNAME=redis
 CMD ["/usr/local/bin/supervisord", "--configuration", "/etc/supervisor.conf"]
 EXPOSE 4505 4506 8000
 

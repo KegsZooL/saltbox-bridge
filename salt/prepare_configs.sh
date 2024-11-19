@@ -13,6 +13,7 @@ export SALT_API_USER REDIS_PASSWORD
 
 [ -z "$SALT_API_USER" ] && error 'Missing SALT_API_USER value'
 [ -z "$SALT_API_PASSWORD" ] && error 'Missing SALT_API_PASSWORD value'
+[ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
 [ -z "$REDIS_PASSWORD" ] && error 'Missing REDIS_PASSWORD value'
 
 mkdir --parents /etc/salt/master.d/
@@ -20,6 +21,6 @@ echo "${SALT_API_USER}:${SALT_API_PASSWORD}" > /etc/salt/auth.txt
 envsubst '$SALT_API_USER' \
   < /root/templates/api.conf.tpl \
   > /etc/salt/master.d/api.conf
-envsubst '$REDIS_PASSWORD' \
+envsubst '$REDIS_USERNAME $REDIS_PASSWORD' \
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
