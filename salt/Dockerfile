@@ -35,7 +35,7 @@ EOF
 
 FROM salt-base AS salt-master
 LABEL name='fastms-salt-master'
-LABEL version='0.5'
+LABEL version='0.6'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
 RUN \
@@ -43,12 +43,12 @@ RUN \
   --mount=type=cache,target=/root/.cache/pip/ \
   pip3 install --upgrade -r /mnt/requirements.txt
 COPY config/netapi.conf /etc/salt/master.d/
-COPY config/master.conf.tpl config/api.conf.tpl /root/templates/
+COPY templates/ /root/templates/
 
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
 COPY prepare_configs.sh /usr/local/bin/
-COPY supervisor.conf /etc/
+COPY config/supervisor.conf /etc/
 
 ENV SALT_API_USER=fastms_core
 ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
@@ -59,6 +59,6 @@ EXPOSE 4505 4506 8000
 
 FROM salt-base AS salt-minion
 LABEL name='fastms-salt-minion'
-LABEL version='0.2'
-COPY ./config/minion.yaml /etc/salt/minion.d/minion.conf
+LABEL version='0.3'
+COPY ./minion/minion.yaml /etc/salt/minion.d/minion.conf
 CMD ["/usr/local/bin/salt-minion"]
