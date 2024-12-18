@@ -1,6 +1,8 @@
 #! /bin/sh
 # shellcheck disable=SC2016
+#
 set -e
+trap '[ $? -eq 0 ] && exit 0 || echo "ERROR on $0 line ${LINENO}"' EXIT
 
 error() {
   >&2 echo "$1"
