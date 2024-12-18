@@ -34,7 +34,7 @@ EOF
 
 
 FROM salt-base AS salt-master
-LABEL name='fastms-salt-master'
+LABEL name='salt-box-salt-master'
 LABEL version='0.6'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
@@ -50,7 +50,7 @@ COPY runners /srv/salt_extmod/runners/
 COPY prepare_configs.sh /usr/local/bin/
 COPY config/supervisor.conf /etc/
 
-ENV SALT_API_USER=fastms_core
+ENV SALT_API_USER=salt_box_core
 ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
 ENV REDIS_USERNAME=redis
 CMD ["/usr/local/bin/supervisord", "--configuration", "/etc/supervisor.conf"]
@@ -58,7 +58,7 @@ EXPOSE 4505 4506 8000
 
 
 FROM salt-base AS salt-minion
-LABEL name='fastms-salt-minion'
+LABEL name='salt-box-salt-minion'
 LABEL version='0.3'
 COPY ./minion/minion.yaml /etc/salt/minion.d/minion.conf
 CMD ["/usr/local/bin/salt-minion"]
