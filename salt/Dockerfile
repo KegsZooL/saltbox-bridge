@@ -47,6 +47,7 @@ COPY templates/ /root/templates/
 
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
+COPY service /srv/salt_service/
 COPY prepare_configs.sh /usr/local/bin/
 COPY config/supervisor.conf /etc/
 
