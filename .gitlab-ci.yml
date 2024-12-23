@@ -10,7 +10,6 @@ include:
     TARGET: salt-master
     REGISTRY_ADDITIONAL_PATH: '/salt-master'
     CONTEXT_PATH: 'salt/'
-    TAG: ''
     IMAGE_TAG: '$TAG'
   rules:
     - if: '$TAG'
