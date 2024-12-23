@@ -1,0 +1,26 @@
+---
+
+include:
+  - project: 'salt.box/ci-lib'
+    file: 'build-image.yml'
+
+.build-salt-master:
+  extends: .build-image
+  variables:
+    TARGET: salt-master
+    REGISTRY_ADDITIONAL_PATH: '/salt-master'
+    CONTEXT_PATH: 'salt/'
+    TAG: ''
+    IMAGE_TAG: '$TAG'
+  rules:
+    - if: '$TAG'
+
+Build salt-master for tag:
+  extends: .build-salt-master
+  variables:
+    TAG: '$CI_COMMIT_TAG'
+
+Build salt-master image for branch:
+  extends: .build-salt-master
+  variables:
+    TAG: '$CI_COMMIT_BRANCH'
