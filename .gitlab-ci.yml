@@ -9,7 +9,6 @@ include:
   variables:
     TARGET: salt-master
     REGISTRY_ADDITIONAL_PATH: '/salt-master'
-    CONTEXT_PATH: 'salt/'
 
 Build salt-master for tag:
   extends: .build-salt-master
