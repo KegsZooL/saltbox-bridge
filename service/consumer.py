@@ -60,19 +60,19 @@ class SaltConsumer:
                 redis_client=self.redis_client,
                 salt_master=self.salt_master,
                 channel=self.channel,
-                channel_returns = channel_returns
+                channel_returns=channel_returns
             ),
             RunJobHandler(
                 redis_client=self.redis_client,
                 salt_master=self.salt_master,
                 channel=self.channel,
-                channel_returns = channel_returns
+                channel_returns=channel_returns
             ),
             RunJobForMasterHandler(
                 redis_client=self.redis_client,
                 salt_master=self.salt_master,
                 channel=self.channel,
-                channel_returns = channel_returns
+                channel_returns=channel_returns
             ),
         ]
 
@@ -115,6 +115,8 @@ class SaltConsumer:
 
     async def consume(self) -> None:
         await create_all_jobs_from_redis(redis_client=self.redis_client, salt_client=get_local_client())
+
+        LOGGER.info('Starting salt.box bridge service consumer')
 
         async with self.redis_client.pubsub() as pubsub:
             await pubsub.subscribe(self.channel)

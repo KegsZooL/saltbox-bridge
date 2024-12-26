@@ -1,11 +1,16 @@
 import asyncio
+import logging
 import os
+import sys
+
 from typing import Literal
 
 from consumer import SaltConsumer
 
+LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 
-async def __main__():
+
+async def run() -> None:
     host: str = 'redis-salt'
     port: int = 6379
     db: int = 0
@@ -13,9 +18,10 @@ async def __main__():
     ssl: bool = True
     ssl_cert_reqs: Literal['none', 'optional', 'required'] = 'required'
     ssl_ca_certs = '/etc/redis/certs/ca.crt'
+    redis_password_file: str = os.getenv('REDIS_PASSWORD_FILE', '')
 
-    with open('/run/secrets/redis_salt_password', 'r') as file:
-        password = file.readline()  # TODO: get redis password from env
+    with open(redis_password_file, 'r') as file:
+        password = file.readline()
 
     consumer = SaltConsumer(
         host=host,
@@ -33,5 +39,19 @@ async def __main__():
     await consumer.consume()
 
 
+def main() -> None:
+    log_level: str = os.getenv('SALT_BRIDGE_SERVICE_LOG_LEVEL', 'INFO')
+
+    logging.basicConfig()
+    formatter = logging.Formatter(LOG_FORMAT)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(log_level)
+    handler.setFormatter(formatter)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+
+    asyncio.run(run())
+
+
 if __name__ == '__main__':
-    asyncio.run(__main__())
+    main()
