@@ -9,20 +9,20 @@ error() {
   exit 1
 }
 
-SALT_API_PASSWORD="$(cat /run/secrets/salt_api_password)"
-REDIS_PASSWORD="$(cat /run/secrets/redis_salt_password)"
-export SALT_API_USER REDIS_PASSWORD
-
 [ -z "$SALT_API_USER" ] && error 'Missing SALT_API_USER value'
-[ -z "$SALT_API_PASSWORD" ] && error 'Missing SALT_API_PASSWORD value'
+[ -z "$SALT_API_PASSWORD_FILE" ] && error 'Missing SALT_API_PASSWORD_FILE value'
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
-[ -z "$REDIS_PASSWORD" ] && error 'Missing REDIS_PASSWORD value'
+[ -z "$REDIS_PASSWORD_FILE" ] && error 'Missing REDIS_PASSWORD_FILE value'
+
+salt_api_password="$(cat "$SALT_API_PASSWORD_FILE")"
+# shellcheck disable=SC2034
+redis_password="$(cat "$REDIS_PASSWORD_FILE")"
 
 mkdir --parents /etc/salt/master.d/
-echo "${SALT_API_USER}:${SALT_API_PASSWORD}" > /etc/salt/auth.txt
+echo "${SALT_API_USER}:${salt_api_password}" > /etc/salt/auth.txt
 envsubst '$SALT_API_USER' \
   < /root/templates/api.conf.tpl \
   > /etc/salt/master.d/api.conf
-envsubst '$REDIS_USERNAME $REDIS_PASSWORD' \
+envsubst '$REDIS_USERNAME $redis_password' \
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
