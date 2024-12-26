@@ -14,15 +14,15 @@ error() {
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
 [ -z "$REDIS_PASSWORD_FILE" ] && error 'Missing REDIS_PASSWORD_FILE value'
 
-salt_api_password="$(cat "$SALT_API_PASSWORD_FILE")"
-# shellcheck disable=SC2034
-redis_password="$(cat "$REDIS_PASSWORD_FILE")"
+SALT_API_PASSWORD="$(cat "$SALT_API_PASSWORD_FILE")"
+REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
+export SALT_API_PASSWORD REDIS_PASSWORD
 
 mkdir --parents /etc/salt/master.d/
-echo "${SALT_API_USER}:${salt_api_password}" > /etc/salt/auth.txt
+echo "${SALT_API_USER}:${SALT_API_PASSWORD}" > /etc/salt/auth.txt
 envsubst '$SALT_API_USER' \
   < /root/templates/api.conf.tpl \
   > /etc/salt/master.d/api.conf
-envsubst '$REDIS_USERNAME $redis_password' \
+envsubst '$REDIS_USERNAME $REDIS_PASSWORD' \
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
