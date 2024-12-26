@@ -114,7 +114,6 @@ class SaltConsumer:
             }))
 
     async def consume(self) -> None:
-        await asyncio.sleep(5)  # #FIXME
         await create_all_jobs_from_redis(redis_client=self.redis_client, salt_client=get_local_client())
 
         async with self.redis_client.pubsub() as pubsub:
