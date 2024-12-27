@@ -1,14 +1,15 @@
 import asyncio
 import json
 import logging.config
-from typing import Any, Literal
+from typing import Any
 
 import salt.config
-from salt.client import get_local_client
+
 from redis import asyncio as aioredis
+from salt.client import get_local_client
 
 from exceptions import StopProcessing
-from handlers import RunJobHandler, RunJobForMasterHandler, PingHandler
+from handlers import MessageHandlerBase, RunJobHandler, RunJobForMasterHandler, PingHandler
 from utils import create_all_jobs_from_redis
 
 LOGGER = logging.getLogger(__name__)
@@ -19,58 +20,33 @@ __opts__: salt.config.minion_config('/etc/salt/minion')
 class SaltConsumer:
 
     def __init__(
-            self,
-            host: str = 'localhost',
-            port: int = 6379,
-            username: str | None = None,
-            password: str | None = None,
-            db: int = 0,
-            ssl=False,
-            ssl_cert_reqs: Literal['none', 'optional', 'required'] = 'required',
-            ssl_ca_certs: str | None = None,
-            channel: str = '',
-            channel_returns: str = ''
+        self,
+        redis_client: aioredis.Redis,
+        salt_master: str,
+        channel: str = '',
+        channel_returns: str = ''
     ):
-        self.host = host
-        self.port = port
         self.channel = channel
         self.channel_returns = channel_returns
-        self.db = db
-        self.username = username
-        self.password = password
-        self.ssl = ssl
-        self.ssl_cert_reqs = ssl_cert_reqs
-        self.ssl_ca_certs = ssl_ca_certs
 
-        self.salt_master = 'salt-master'  # TODO: collect salt master
+        self.redis_client = redis_client
 
-        self.redis_client = aioredis.Redis(
-            host=self.host,
-            port=self.port,
-            db=self.db,
-            username=self.username,
-            password=self.password,
-            ssl=self.ssl,
-            ssl_cert_reqs=self.ssl_cert_reqs,
-            ssl_ca_certs=self.ssl_ca_certs,
-        )
-
-        self.handlers = [
+        self.handlers: list[MessageHandlerBase] = [
             PingHandler(
                 redis_client=self.redis_client,
-                salt_master=self.salt_master,
+                salt_master=salt_master,
                 channel=self.channel,
                 channel_returns=channel_returns
             ),
             RunJobHandler(
                 redis_client=self.redis_client,
-                salt_master=self.salt_master,
+                salt_master=salt_master,
                 channel=self.channel,
                 channel_returns=channel_returns
             ),
             RunJobForMasterHandler(
                 redis_client=self.redis_client,
-                salt_master=self.salt_master,
+                salt_master=salt_master,
                 channel=self.channel,
                 channel_returns=channel_returns
             ),

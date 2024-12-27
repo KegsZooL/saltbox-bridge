@@ -5,6 +5,8 @@ import sys
 
 from typing import Literal
 
+from redis import asyncio as aioredis
+
 from consumer import SaltConsumer
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
@@ -19,11 +21,12 @@ async def run() -> None:
     ssl_cert_reqs: Literal['none', 'optional', 'required'] = 'required'
     ssl_ca_certs = '/etc/redis/certs/ca.crt'
     redis_password_file: str = os.getenv('REDIS_PASSWORD_FILE', '')
+    salt_master = os.getenv('SALT_MASTER', 'salt-master')  # TODO From conf
 
     with open(redis_password_file, 'r') as file:
         password = file.readline()
 
-    consumer = SaltConsumer(
+    redis_client = aioredis.Redis(
         host=host,
         port=port,
         db=db,
@@ -32,6 +35,11 @@ async def run() -> None:
         ssl=ssl,
         ssl_cert_reqs=ssl_cert_reqs,
         ssl_ca_certs=ssl_ca_certs,
+    )
+
+    consumer = SaltConsumer(
+        redis_client=redis_client,
+        salt_master=salt_master,
         channel='salt-service',
         channel_returns='salt-service-returns',
     )

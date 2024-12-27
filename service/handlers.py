@@ -39,7 +39,7 @@ class MessageHandlerBase(abc.ABC):
     @abc.abstractmethod
     def COMMAND_PATTERN(self) -> re.Pattern[str]: ...
 
-    async def handle(self, command: str, payload: dict[str, Any]) -> type[bool, Any]:
+    async def handle(self, command: str, payload: dict[str, Any]) -> tuple[bool, Any]:
         """
         If command matches COMMAND_PATTERN, process message
 
@@ -54,7 +54,7 @@ class MessageHandlerBase(abc.ABC):
         return False, None
 
     @abc.abstractmethod
-    async def process(self, match: re.Match, payload: dict[str, Any]) -> type[bool, Any]:
+    async def process(self, match: re.Match, payload: dict[str, Any]) -> tuple[bool, Any]:
         """ Take action on message """
 
 
@@ -68,7 +68,7 @@ class RunJobHandler(MessageHandlerBase):
     """
     COMMAND_PATTERN = re.compile(r'^job/run$')
 
-    async def process(self, match: re.Match, payload: dict[str, Any]) -> type[bool, Any]:
+    async def process(self, match: re.Match, payload: dict[str, Any]) -> tuple[bool, Any]:
         hash_name: str = payload['hash_name']
 
         try:
@@ -102,7 +102,7 @@ class PingHandler(MessageHandlerBase):
     """
     COMMAND_PATTERN = re.compile(r'^ping$')
 
-    async def process(self, match: re.Match, payload: dict[str, Any]) -> type[bool, Any]:
+    async def process(self, match: re.Match, payload: dict[str, Any]) -> tuple[bool, Any]:
         return True, {
             'ping': 'pong',
             'master': self.salt_master,
