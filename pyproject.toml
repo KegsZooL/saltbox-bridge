@@ -1,4 +1,32 @@
-[tool.flake8]
+[project]
+dynamic = [ 'dependencies', 'version' ]
+name = 'salt-box-bridge-service'
+requires-python = '>=3.10'
+license = { 'text' = 'N/A' }  # FIXME
+description = 'salt.box connector to salt master, service module'
+readme = 'README.md'
+classifiers = [
+  'Topic :: System :: Systems Administration',
+]
+
+[project.scripts]
+
+[metadata]
+url = 'https://dev.altlab.su/salt.box'
+version = 'attr: package.__version__'
+
+[build-system]
+requires = ['setuptools>=57.4.0', 'setuptools-scm']
+build-backend = 'setuptools.build_meta'
+
+[tool.setuptools.packages.find]
+include = ['salb_box_bridge_service', 'salt_box_bridge_service.*']
+
+[tool.setuptools.dynamic]
+dependencies = { file = ['requirements.txt'] }
+version = { attr = 'salt_box_bridge_service.__version__' }
+
+[tool.flake8]  # Requires Flake8-pyproject
 max-line-length = 120
 extend-ignore = [ ]
 builtins = [ '__opts__', '__salt__' ]

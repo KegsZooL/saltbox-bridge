@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
 RUN \
   --mount=type=bind,target=/mnt/ \
   --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install --upgrade -r /mnt/requirements.txt
+  pip3 install --upgrade -r /mnt/docker/requirements.txt
 COPY docker/config/netapi.conf /etc/salt/master.d/
 COPY docker/templates/ /root/templates/
 

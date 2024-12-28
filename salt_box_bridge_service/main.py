@@ -7,7 +7,7 @@ from typing import Literal
 
 from redis import asyncio as aioredis
 
-from consumer import SaltConsumer
+from salt_box_bridge_service.consumer import SaltConsumer
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 

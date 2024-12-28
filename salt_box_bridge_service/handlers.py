@@ -11,8 +11,8 @@ import salt.grains.core
 from redis import asyncio as aioredis
 from salt.client import LocalClient
 
-from exceptions import CreateJobError
-from utils import create_job_from_redis
+from salt_box_bridge_service.exceptions import CreateJobError
+from salt_box_bridge_service.utils import create_job_from_redis
 
 LOGGER = logging.getLogger(__name__)
 

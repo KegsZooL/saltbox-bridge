@@ -8,9 +8,9 @@ import salt.config
 from redis import asyncio as aioredis
 from salt.client import get_local_client
 
-from exceptions import StopProcessing
-from handlers import MessageHandlerBase, RunJobHandler, RunJobForMasterHandler, PingHandler
-from utils import create_all_jobs_from_redis
+from salt_box_bridge_service.exceptions import StopProcessing
+from salt_box_bridge_service.handlers import MessageHandlerBase, RunJobHandler, RunJobForMasterHandler, PingHandler
+from salt_box_bridge_service.utils import create_all_jobs_from_redis
 
 LOGGER = logging.getLogger(__name__)
 

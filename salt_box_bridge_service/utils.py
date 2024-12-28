@@ -5,7 +5,7 @@ from redis.asyncio import Redis
 from salt.client import LocalClient
 from salt.exceptions import SaltException
 
-from exceptions import CreateJobError
+from salt_box_bridge_service.exceptions import CreateJobError
 
 
 LOGGER = logging.getLogger(__name__)
