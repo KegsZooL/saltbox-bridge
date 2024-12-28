@@ -1,0 +1,7 @@
+# salt.box bridge
+
+Bridge component is an additional Salt modules set to be connected with the
+whole salt.box system.
+
+Modules need to be placed at respective Salt paths. Some modules requires
+some salt-master configuration.

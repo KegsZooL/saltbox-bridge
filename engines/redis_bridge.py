@@ -226,6 +226,9 @@ def start(
     expire
         Time of records live in seconds
     """
+    if __opts__["__role"] != "master":
+        raise SaltMasterError('Expected to run as a master engine')
+
     redis_client = redis.Redis(
         host=host,
         port=port,

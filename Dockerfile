@@ -35,21 +35,21 @@ EOF
 
 FROM salt-base AS salt-master
 LABEL name='salt-box-salt-master'
-LABEL version='0.6'
+LABEL version='0.7'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
 RUN \
   --mount=type=bind,target=/mnt/ \
   --mount=type=cache,target=/root/.cache/pip/ \
   pip3 install --upgrade -r /mnt/requirements.txt
-COPY config/netapi.conf /etc/salt/master.d/
-COPY templates/ /root/templates/
+COPY docker/config/netapi.conf /etc/salt/master.d/
+COPY docker/templates/ /root/templates/
 
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
 COPY service /srv/salt_service/
-COPY --chmod=755 prepare_configs.sh /usr/local/bin/
-COPY config/supervisor.conf /etc/
+COPY --chmod=755 docker/prepare_configs.sh /usr/local/bin/
+COPY docker/config/supervisor.conf /etc/
 
 ENV SALT_API_USER=salt_box_core
 ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
@@ -60,6 +60,6 @@ EXPOSE 4505 4506 8000
 
 FROM salt-base AS salt-minion
 LABEL name='salt-box-salt-minion'
-LABEL version='0.3'
-COPY ./minion/minion.yaml /etc/salt/minion.d/minion.conf
+LABEL version='0.4'
+COPY docker/minion/minion.yaml /etc/salt/minion.d/minion.conf
 CMD ["/usr/local/bin/salt-minion"]
