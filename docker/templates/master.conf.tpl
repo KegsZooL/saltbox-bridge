@@ -3,7 +3,7 @@ module_dirs:
   - /srv/salt_extmod/
 auto_accept: true
 engines:
-  - redis_bridge:
+  - salt_box_redis_bridge:
       host: redis-salt
       username: '${REDIS_USERNAME}'
       password: '${REDIS_PASSWORD}'
@@ -12,9 +12,9 @@ engines:
       # Time to live for job returns and grains (sec)
       expire: 604800
 schedule:
-  redis_bridge_cleanup:
+  salt_box_redis_bridge_cleanup:
     hours: 3
-    function: redis_bridge.cleanup_expired_jobs
+    function: salt_box_redis_bridge.cleanup_expired_jobs
     kwargs:
       # Age of jobs to delete (sec)
       expire: 604800

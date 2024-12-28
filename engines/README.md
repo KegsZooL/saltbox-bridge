@@ -1,3 +1,7 @@
+> FIXME Document is stale
+> FIXME Translate
+> FIXME Do not describe common fuctions
+
 # Redis Bridge for SaltStack
 
 Этот модуль предназначен для интеграции SaltStack с Redis, позволяя публиковать события Salt в Redis для дальнейшей обработки или мониторинга.

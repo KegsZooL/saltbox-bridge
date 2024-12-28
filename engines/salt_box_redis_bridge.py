@@ -6,10 +6,10 @@ Salt master config:
                            # better not to mix with /srv/salt/
 
     engines:
-      - redis_bridge:  # start() args following
+      - salt_box_redis_bridge:  # start() args following
           host: localhost  # Redis insance
 
-Put the module to /srv/salt_extmod/engines/redis_bridge.py
+Put the module to /srv/salt_extmod/engines/
 
 Restart salt-master. Log and exceptions will be in salt-master log.
 """
