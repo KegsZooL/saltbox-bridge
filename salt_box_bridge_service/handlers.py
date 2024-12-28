@@ -4,36 +4,31 @@ import logging
 import re
 from typing import Any
 
-import salt.client
-import salt.config
-import salt.exceptions
-import salt.grains.core
-from redis import asyncio as aioredis
-from salt.client import LocalClient
+import salt.client  # type:ignore
+import salt.config  # type:ignore
+import salt.exceptions  # type:ignore
+import salt.grains.core  # type:ignore
 
 from salt_box_bridge_service.exceptions import CreateJobError
-from salt_box_bridge_service.utils import create_job_from_redis
+from salt_box_bridge_service.utils import JobCreator
 
 LOGGER = logging.getLogger(__name__)
-
-__opts__: salt.config.minion_config('/etc/salt/minion')
 
 
 class MessageHandlerBase(abc.ABC):
     check_master: bool = False
 
-    def __init__(self, redis_client: aioredis.Redis, salt_master: str, channel: str, channel_returns: str) -> None:
-        self.redis_client: aioredis.Redis = redis_client
-        self.salt_client: LocalClient | None = None
+    def __init__(
+        self,
+        job_creator: JobCreator,
+        salt_master: str,
+        channel: str,  # TODO Redundant?
+        channel_returns: str  # TODO Redundant?
+    ) -> None:
+        self.job_creator = job_creator
         self.channel: str = channel
         self.channel_returns: str = channel_returns
         self.salt_master: str = salt_master
-
-    def get_salt_client(self) -> salt.client.LocalClient:
-        if self.salt_client is None:
-            self.salt_client = salt.client.get_local_client()
-
-        return self.salt_client
 
     @property
     @abc.abstractmethod
@@ -72,10 +67,8 @@ class RunJobHandler(MessageHandlerBase):
         hash_name: str = payload['hash_name']
 
         try:
-            jid = await create_job_from_redis(
+            jid = await self.job_creator.create_job_from_redis(
                 hash_name=hash_name,
-                redis_client=self.redis_client,
-                salt_client=self.get_salt_client()
             )
         except CreateJobError as error:
             return False, str(error)

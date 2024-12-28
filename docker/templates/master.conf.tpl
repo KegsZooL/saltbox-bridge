@@ -11,6 +11,7 @@ engines:
       ssl_ca_certs: '/etc/redis/certs/ca.crt'
       # Time to live for job returns and grains (sec)
       expire: 604800
+  - salt_box_service: {}
 schedule:
   salt_box_redis_bridge_cleanup:
     hours: 3

@@ -3,18 +3,13 @@ import json
 import logging.config
 from typing import Any
 
-import salt.config
-
 from redis import asyncio as aioredis
-from salt.client import get_local_client
 
 from salt_box_bridge_service.exceptions import StopProcessing
 from salt_box_bridge_service.handlers import MessageHandlerBase, RunJobHandler, RunJobForMasterHandler, PingHandler
-from salt_box_bridge_service.utils import create_all_jobs_from_redis
+from salt_box_bridge_service.utils import JobCreator
 
 LOGGER = logging.getLogger(__name__)
-
-__opts__: salt.config.minion_config('/etc/salt/minion')
 
 
 class SaltConsumer:
@@ -22,10 +17,12 @@ class SaltConsumer:
     def __init__(
         self,
         redis_client: aioredis.Redis,
+        salt_opts: dict,
         salt_master: str,
         channel: str = '',
         channel_returns: str = ''
     ):
+        self.job_creator = JobCreator(salt_opts=salt_opts, redis_client=redis_client)
         self.channel = channel
         self.channel_returns = channel_returns
 
@@ -33,19 +30,19 @@ class SaltConsumer:
 
         self.handlers: list[MessageHandlerBase] = [
             PingHandler(
-                redis_client=self.redis_client,
+                job_creator=self.job_creator,
                 salt_master=salt_master,
                 channel=self.channel,
                 channel_returns=channel_returns
             ),
             RunJobHandler(
-                redis_client=self.redis_client,
+                job_creator=self.job_creator,
                 salt_master=salt_master,
                 channel=self.channel,
                 channel_returns=channel_returns
             ),
             RunJobForMasterHandler(
-                redis_client=self.redis_client,
+                job_creator=self.job_creator,
                 salt_master=salt_master,
                 channel=self.channel,
                 channel_returns=channel_returns
@@ -90,7 +87,7 @@ class SaltConsumer:
             }))
 
     async def consume(self) -> None:
-        await create_all_jobs_from_redis(redis_client=self.redis_client, salt_client=get_local_client())
+        await self.job_creator.create_all_jobs_from_redis()
 
         LOGGER.info('Starting salt.box bridge service consumer')
 

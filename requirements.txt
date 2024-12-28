@@ -1,2 +1,2 @@
 redis~=5.0.4
-salt~=3007.1
+salt
