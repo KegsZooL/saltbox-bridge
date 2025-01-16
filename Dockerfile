@@ -35,7 +35,7 @@ EOF
 
 FROM salt-base AS salt-master
 LABEL name='salt-box-salt-master'
-LABEL version='0.8'
+LABEL version='0.9'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
 RUN \
@@ -46,7 +46,7 @@ RUN \
   --mount=type=bind,target=/mnt/,readwrite \
   --mount=type=cache,target=/root/.cache/pip/ \
   pip3 install /mnt/
-COPY docker/config/netapi.conf /etc/salt/master.d/
+COPY docker/config/netapi.conf docker/config/master_id.conf /etc/salt/master.d/
 COPY docker/templates/ /root/templates/
 
 COPY engines /srv/salt_extmod/engines/

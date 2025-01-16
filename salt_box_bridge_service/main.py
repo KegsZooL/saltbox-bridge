@@ -17,7 +17,7 @@ LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 
 
 async def run(salt_opts: dict) -> None:
-    host: str = 'redis-salt'
+    redis_host: str = os.getenv('REDIS_HOST', 'redis-salt')
     port: int = 6379
     db: int = 0
     username = os.environ['REDIS_USERNAME']
@@ -25,13 +25,13 @@ async def run(salt_opts: dict) -> None:
     ssl_cert_reqs: Literal['none', 'optional', 'required'] = 'required'
     ssl_ca_certs = '/etc/redis/certs/ca.crt'
     redis_password_file: str = os.getenv('REDIS_PASSWORD_FILE', '')
-    salt_master = os.getenv('SALT_MASTER', 'salt-master')  # TODO From conf
+    salt_master = salt_opts['salt_box_master_id']
 
     with open(redis_password_file, 'r') as file:
         password = file.readline()
 
     redis_client = aioredis.Redis(
-        host=host,
+        host=redis_host,
         port=port,
         db=db,
         username=username,

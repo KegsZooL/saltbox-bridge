@@ -188,7 +188,7 @@ async def _async_start(redis_client: redis.Redis, expire: int | None) -> None:
 
 
 def start(
-    host: str = 'localhost',
+    redis_host: str = 'localhost',
     port: int = 6379,
     username: str | None = None,
     password: str | None = None,
@@ -199,7 +199,7 @@ def start(
     expire: int | None = None,
 ) -> None:
     """
-    host
+    redis_host
         Redis client connection host
 
     port
@@ -228,7 +228,7 @@ def start(
     """
 
     redis_client = redis.Redis(
-        host=host,
+        host=redis_host,
         port=port,
         db=db,
         username=username,

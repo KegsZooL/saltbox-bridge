@@ -4,7 +4,7 @@ module_dirs:
 auto_accept: true
 engines:
   - salt_box_redis_bridge:
-      host: redis-salt
+      redis_host: redis-salt
       username: '${REDIS_USERNAME}'
       password: '${REDIS_PASSWORD}'
       ssl: true
@@ -19,6 +19,6 @@ schedule:
     kwargs:
       # Age of jobs to delete (sec)
       expire: 604800
-      host: redis-salt
+      redis_host: redis-salt
 
 # vi: syn=yaml
