@@ -7,7 +7,7 @@ Salt master config:
 
     engines:
       - salt_box_redis_bridge:  # start() args following
-          host: localhost  # Redis insance
+          host: localhost  # Redis instance
 
 Put the module to /srv/salt_extmod/engines/
 
@@ -49,7 +49,7 @@ JID_PATTERN = re.compile(JID_REGEX)
 
 def jid_to_epoch(jid: str) -> float:
     if not (match := JID_PATTERN.match(jid)):
-        raise SaltMasterError('Unexpected JID format: %s', jid)
+        raise SaltMasterError('Unexpected JID format: %s' % jid)
 
     kwargs = {k: int(val) for k, val in match.groupdict().items()}
 
@@ -67,7 +67,7 @@ class StopProcessing(Exception):
     """
 
 
-class MessageHanlerBase(abc.ABC):
+class MessageHandlerBase(abc.ABC):
     def __init__(self, redis_client: redis.Redis) -> None:
         self.redis_client = redis_client
 
@@ -89,35 +89,66 @@ class MessageHanlerBase(abc.ABC):
         """ Take action on message """
 
 
-class MessageHandlerNew(MessageHanlerBase):
-    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>[\d]{20})/new')
+class MessageHandlerJobNew(MessageHandlerBase):
+    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})/new')
+    # Mention: on salt-call call there is no salt/job/*/new event
+    # (but salt/job/*/ret/* it is)
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
-        # Mention: on salt-call call there is no salt/job/*/new event
-        # (but salt/job/*/ret/* it is)
         jid = match.group('jid')
         data_json = json.dumps(data)
         LOGGER.info('New job: %s', jid)
-        await self.redis_client.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
-        await self.redis_client.publish(channel=f'job:{jid}:new', message=data_json)
+
+        await self._process_job(jid=jid, data_json=data_json)
+
         raise StopProcessing()
 
+    async def _process_job(self, jid: str, data_json: str) -> None:
+        await self.redis_client.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
+        await self.redis_client.publish(channel=f'job:{jid}:new', message=data_json)
 
-class MessageHanlerReturn(MessageHanlerBase):
-    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>[\d]{20})/ret/(?P<mid>.+)')
+class MessageHandlerJobNewForTask(MessageHandlerJobNew):
+    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new')
 
-    def __init__(self, redis: redis.Redis, expire: int | None) -> None:
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+        jid = match.group('jid')
+        tid = match.group('tid')
+
+        data['jid'] = jid
+        data_json = json.dumps(data)
+
+        LOGGER.info('New job (jid: %s) for task: %s', jid, tid)
+
+        await self._process_job(jid=jid, data_json=data_json)
+        await self._process_task(jid=jid, tid=tid, data_json=data_json)
+
+        raise StopProcessing()
+
+    async def _process_task(self, jid: str, tid: str, data_json: str) -> None:
+        await self.redis_client.publish(channel=f'task:{tid}:job{jid}:new', message=data_json)
+
+
+class MessageHandlerJobReturn(MessageHandlerBase):
+    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
+
+    def __init__(self, redis_client: redis.Redis, expire: int | None) -> None:
         self.expire = expire
-        super().__init__(redis)
+        super().__init__(redis_client)
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         jid = match.group('jid')
         mid = match.group('mid')
         function = data['fun']
         data_json = json.dumps(data)
-        hash_name = f'job:{jid}:return'
 
         LOGGER.info('Job %s return for %s, function %s', jid, mid, function)
+
+        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
+
+        raise StopProcessing()
+
+    async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str):
+        hash_name = f'job:{jid}:return'
 
         async with self.redis_client.pipeline(transaction=True) as pipe:
             pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
@@ -129,8 +160,6 @@ class MessageHanlerReturn(MessageHanlerBase):
 
         if function == 'grains.items':
             await self._process_grains(mid, data['return'])
-
-        raise StopProcessing()
 
     async def _process_grains(self, mid: str, grains: dict[str, Any]) -> None:
         LOGGER.debug('Processing grains for %s', mid)
@@ -150,6 +179,32 @@ class MessageHanlerReturn(MessageHanlerBase):
         await self.redis_client.publish(channel='grains', message=dumped_grains)
 
 
+class MessageHandlerJobReturnForTask(MessageHandlerJobReturn):
+    TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
+
+    async def _process_task(self, jid, tid, data_json):
+        await self.redis_client.publish(channel=f'task:{tid}:job{jid}:new', message=data_json)
+
+
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+        jid = match.group('jid')
+        tid = match.group('tid')
+        mid = match.group('mid')
+
+
+        data['jid'] = jid
+        function = data['fun']
+        data_json = json.dumps(data)
+
+        LOGGER.info('Job %s (task %s) return for %s, function %s', jid, tid, mid, function)
+
+        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
+        await self._process_task(jid=jid, tid=tid, data_json=data_json)
+
+        raise StopProcessing()
+
+
+
 class RedisPusher:
     def __init__(
         self,
@@ -157,8 +212,10 @@ class RedisPusher:
         expire: int | None = None
     ) -> None:
         self.handlers = [
-            MessageHandlerNew(redis_client),
-            MessageHanlerReturn(redis_client, expire=expire),
+            MessageHandlerJobNew(redis_client),
+            MessageHandlerJobNewForTask(redis_client),
+            MessageHandlerJobReturn(redis_client, expire=expire),
+            MessageHandlerJobReturnForTask(redis_client, expire=expire),
         ]
 
     async def process(self, event: dict | None) -> None:
