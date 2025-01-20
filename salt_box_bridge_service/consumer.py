@@ -31,21 +31,15 @@ class SaltConsumer:
         self.handlers: list[MessageHandlerBase] = [
             PingHandler(
                 job_creator=self.job_creator,
-                salt_master=salt_master,
-                channel=self.channel,
-                channel_returns=channel_returns
+                salt_master=salt_master
             ),
             RunJobHandler(
                 job_creator=self.job_creator,
-                salt_master=salt_master,
-                channel=self.channel,
-                channel_returns=channel_returns
+                salt_master=salt_master
             ),
             RunJobForMasterHandler(
                 job_creator=self.job_creator,
-                salt_master=salt_master,
-                channel=self.channel,
-                channel_returns=channel_returns
+                salt_master=salt_master
             ),
         ]
 

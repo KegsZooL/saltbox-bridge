@@ -21,13 +21,9 @@ class MessageHandlerBase(abc.ABC):
     def __init__(
         self,
         job_creator: JobCreator,
-        salt_master: str,
-        channel: str,  # TODO Redundant?
-        channel_returns: str  # TODO Redundant?
+        salt_master: str
     ) -> None:
         self.job_creator = job_creator
-        self.channel: str = channel
-        self.channel_returns: str = channel_returns
         self.salt_master: str = salt_master
 
     @property
