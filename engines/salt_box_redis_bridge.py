@@ -125,7 +125,7 @@ class MessageHandlerJobNewForTask(MessageHandlerJobNew):
         raise StopProcessing()
 
     async def _process_task(self, jid: str, tid: str, data_json: str) -> None:
-        await self.redis_client.publish(channel=f'task:{tid}:job{jid}:new', message=data_json)
+        await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:new', message=data_json)
 
 
 class MessageHandlerJobReturn(MessageHandlerBase):
@@ -183,7 +183,7 @@ class MessageHandlerJobReturnForTask(MessageHandlerJobReturn):
     TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
 
     async def _process_task(self, jid, tid, data_json):
-        await self.redis_client.publish(channel=f'task:{tid}:job{jid}:new', message=data_json)
+        await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:return', message=data_json)
 
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
