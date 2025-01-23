@@ -16,13 +16,8 @@ REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
 export REDIS_PASSWORD
 
 mkdir --parents /etc/salt/master.d/
-envsubst '$REDIS_USERNAME $REDIS_PASSWORD' \
+envsubst '$SALT_MASTER_LOG_LEVEL $REDIS_USERNAME $REDIS_PASSWORD' \
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
-
-cat << EOF > /etc/salt/master.d/logging.conf
-log_level: ${SALT_MASTER_LOG_LEVEL}
-log_level_logfile: quiet
-EOF
 
 exec "$@"

@@ -2,6 +2,8 @@ user: salt
 module_dirs:
   - /srv/salt_extmod/
 auto_accept: true
+log_level: '${SALT_MASTER_LOG_LEVEL}'
+log_level_logfile: 'quiet'
 engines:
   - salt_box_redis_bridge:
       redis_host: redis-salt
