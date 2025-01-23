@@ -1,6 +1,7 @@
 ARG ALPINE_VERSION='3.18'
 ARG PYTHON_VERSION='3.10'
 
+# TODO alt
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} AS salt-base
 
 ARG SALT_VERSION='3006.7'
@@ -35,29 +36,25 @@ EOF
 
 FROM salt-base AS salt-master
 LABEL name='salt-box-salt-master'
-LABEL version='0.9'
+LABEL version='1.0'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
-RUN \
-  --mount=type=bind,target=/mnt/ \
-  --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install --upgrade -r /mnt/docker/requirements.txt
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
   --mount=type=cache,target=/root/.cache/pip/ \
   pip3 install /mnt/
-COPY docker/config/netapi.conf docker/config/master_id.conf /etc/salt/master.d/
+COPY docker/config/master_id.conf /etc/salt/master.d/
 COPY docker/templates/ /root/templates/
 
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
-COPY --chmod=755 docker/prepare_configs.sh /usr/local/bin/
-COPY docker/config/supervisor.conf /etc/
+COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/
 
-ENV SALT_API_USER=salt_box_core
-ENV SALT_MASTER_LOG_LEVEL=warning SALT_API_LOG_LEVEL=info
 ENV REDIS_USERNAME=redis
-CMD ["/usr/local/bin/supervisord", "--configuration", "/etc/supervisor.conf"]
+ENV REDIS_PASSWORD_FILE=
+ENV SALT_MASTER_LOG_LEVEL=warning
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["salt-master"]
 EXPOSE 4505 4506 8000
 
 

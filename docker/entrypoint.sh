@@ -9,20 +9,20 @@ error() {
   exit 1
 }
 
-[ -z "$SALT_API_USER" ] && error 'Missing SALT_API_USER value'
-[ -z "$SALT_API_PASSWORD_FILE" ] && error 'Missing SALT_API_PASSWORD_FILE value'
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
 [ -z "$REDIS_PASSWORD_FILE" ] && error 'Missing REDIS_PASSWORD_FILE value'
 
-SALT_API_PASSWORD="$(cat "$SALT_API_PASSWORD_FILE")"
 REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
-export SALT_API_PASSWORD REDIS_PASSWORD
+export REDIS_PASSWORD
 
 mkdir --parents /etc/salt/master.d/
-echo "${SALT_API_USER}:${SALT_API_PASSWORD}" > /etc/salt/auth.txt
-envsubst '$SALT_API_USER' \
-  < /root/templates/api.conf.tpl \
-  > /etc/salt/master.d/api.conf
 envsubst '$REDIS_USERNAME $REDIS_PASSWORD' \
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
+
+cat << EOF > /etc/salt/master.d/logging.conf
+log_level: ${SALT_MASTER_LOG_LEVEL}
+log_level_logfile: quiet
+EOF
+
+exec "$@"
