@@ -4,6 +4,7 @@ module_dirs:
 auto_accept: true
 log_level: '${SALT_MASTER_LOG_LEVEL}'
 log_level_logfile: 'quiet'
+presence_events: True
 engines:
   - salt_box_redis_bridge:
       redis_host: redis-salt

@@ -67,7 +67,7 @@ class StopProcessing(Exception):
     """
 
 
-class MessageHandlerBase(abc.ABC):
+class BaseMessageHandler(abc.ABC):
     def __init__(self, redis_client: redis.Redis) -> None:
         self.redis_client = redis_client
 
@@ -89,7 +89,7 @@ class MessageHandlerBase(abc.ABC):
         """ Take action on message """
 
 
-class MessageHandlerJobNew(MessageHandlerBase):
+class JobNewMessageHandler(BaseMessageHandler):
     TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})/new')
     # Mention: on salt-call call there is no salt/job/*/new event
     # (but salt/job/*/ret/* it is)
@@ -107,7 +107,7 @@ class MessageHandlerJobNew(MessageHandlerBase):
         await self.redis_client.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
         await self.redis_client.publish(channel=f'job:{jid}:new', message=data_json)
 
-class MessageHandlerJobNewForTask(MessageHandlerJobNew):
+class JobNewForTaskMessageHandler(JobNewMessageHandler):
     TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new')
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
@@ -128,7 +128,7 @@ class MessageHandlerJobNewForTask(MessageHandlerJobNew):
         await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:new', message=data_json)
 
 
-class MessageHandlerJobReturn(MessageHandlerBase):
+class JobReturnMessageHandler(BaseMessageHandler):
     TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
 
     def __init__(self, redis_client: redis.Redis, expire: int | None) -> None:
@@ -179,7 +179,7 @@ class MessageHandlerJobReturn(MessageHandlerBase):
         await self.redis_client.publish(channel='grains', message=dumped_grains)
 
 
-class MessageHandlerJobReturnForTask(MessageHandlerJobReturn):
+class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
     TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
 
     async def _process_task(self, jid, tid, data_json):
@@ -190,7 +190,6 @@ class MessageHandlerJobReturnForTask(MessageHandlerJobReturn):
         jid = match.group('jid')
         tid = match.group('tid')
         mid = match.group('mid')
-
 
         data['jid'] = jid
         function = data['fun']
@@ -204,6 +203,18 @@ class MessageHandlerJobReturnForTask(MessageHandlerJobReturn):
         raise StopProcessing()
 
 
+class PresenceMessageHandler(BaseMessageHandler):
+    TAG_PATTERN = re.compile(r'salt/presence/present')
+
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+        message = {
+            'master': __opts__['salt_box_master_id'],
+            'minions': data['present'],
+            'stamp': datetime.fromisoformat(data['_stamp']).timestamp(),
+        }
+
+        await self.redis_client.publish(channel=f'presence', message=json.dumps(message))
+
 
 class RedisPusher:
     def __init__(
@@ -212,10 +223,11 @@ class RedisPusher:
         expire: int | None = None
     ) -> None:
         self.handlers = [
-            MessageHandlerJobNew(redis_client),
-            MessageHandlerJobNewForTask(redis_client),
-            MessageHandlerJobReturn(redis_client, expire=expire),
-            MessageHandlerJobReturnForTask(redis_client, expire=expire),
+            JobNewMessageHandler(redis_client),
+            JobNewForTaskMessageHandler(redis_client),
+            JobReturnMessageHandler(redis_client, expire=expire),
+            JobReturnForTaskMessageHandler(redis_client, expire=expire),
+            PresenceMessageHandler(redis_client),
         ]
 
     async def process(self, event: dict | None) -> None:
