@@ -29,8 +29,8 @@ class JobCreator:
         tgt: str = job_data[b'tgt'].decode()
         tgt_type: str = job_data[b'tgt_type'].decode()
         fun: str = job_data[b'fun'].decode()
-        arg: list | None = json.loads(job_data[b'arg']) if b'arg' in job_data else None
-        kwarg: dict | None = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else None
+        arg: list = json.loads(job_data[b'arg']) if b'arg' in job_data else []
+        kwarg: dict = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else {}
 
         try:
             back_jid: str = self.salt_client.cmd_async(
