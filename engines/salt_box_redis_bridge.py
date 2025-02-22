@@ -138,6 +138,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         jid = match.group('jid')
         mid = match.group('mid')
+        data['salt_master'] = __opts__['salt_box_master_id']
         function = data['fun']
         data_json = json.dumps(data)
 
@@ -192,6 +193,7 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
         mid = match.group('mid')
 
         data['jid'] = jid
+        data['salt_master'] = __opts__['salt_box_master_id']
         function = data['fun']
         data_json = json.dumps(data)
 
