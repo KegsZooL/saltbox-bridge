@@ -38,11 +38,22 @@ FROM salt-base AS salt-master
 LABEL name='salt-box-salt-master'
 LABEL version='1.0'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
-  apk add gettext-envsubst
+  apk add gettext-envsubst git
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
   --mount=type=cache,target=/root/.cache/pip/ \
   pip3 install /mnt/
+
+RUN \
+  --mount=type=bind,target=/mnt/,readwrite \
+  --mount=type=cache,target=/root/.cache/pip/ \
+<<EOF
+mkdir -p /srv/salt/repo
+cd /srv/salt/repo
+git clone https://dev.altlab.su/a.baikov/test-public-sls-repo.git .
+cp -r states ../states
+EOF
+
 COPY docker/config/master_id.conf /etc/salt/master.d/
 COPY docker/templates/ /root/templates/
 
