@@ -31,6 +31,10 @@ class JobCreator:
         fun: str = job_data[b'fun'].decode()
         arg: list = json.loads(job_data[b'arg']) if b'arg' in job_data else []
         kwarg: dict = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else {}
+        status: str = job_data[b'status'].decode() if b'status' in job_data else None
+
+        if status == 'processed':
+            return jid
 
         try:
             back_jid: str = self.salt_client.cmd_async(
@@ -45,7 +49,8 @@ class JobCreator:
             LOGGER.exception(str(err))
             raise CreateJobError(str(err)) from err
 
-        await self.redis_client.delete(hash_name)
+        await self.redis_client.hset(hash_name, 'status', 'processed')
+        await self.redis_client.expire(hash_name, 600)
 
         return back_jid
 
