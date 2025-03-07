@@ -1,22 +1,16 @@
 ARG ALPINE_VERSION='3.18'
 ARG PYTHON_VERSION='3.10'
 
-# TODO alt
+# TODO Altlinux
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} AS salt-base
 
 ARG SALT_VERSION='3006.7'
 
 ARG BUILD_DEPS="gcc g++ autoconf make libffi-dev libgit2-dev"
 
-RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked <<EOF
-set -e
-apk add binutils libgit2 libffi openssl-dev
-addgroup -g 450 -S salt && adduser -s /bin/sh -SD -G salt salt
-mkdir -p /etc/pki /etc/salt/pki /etc/salt/minion.d/ /etc/salt/master.d \
-    /etc/salt/proxy.d /var/cache/salt /var/log/salt /var/run/salt
-chmod -R 2775 /etc/pki /etc/salt /var/cache/salt /var/log/salt /var/run/salt
-chgrp -R salt /etc/pki /etc/salt /var/cache/salt /var/log/salt /var/run/salt
-EOF
+RUN \
+  --mount=type=cache,target=/var/cache/apk/,sharing=locked \
+  apk add binutils libgit2 libffi openssl-dev
 
 RUN \
   --mount=type=cache,target=/var/cache/apk/,sharing=locked \
@@ -30,7 +24,6 @@ PIP_CONSTRAINT=/root/constraint.txt USE_STATIC_REQUIREMENTS=1 \
     pyOpenSSL "salt==${SALT_VERSION}" 'pygit2<1.12'
 rm /root/constraint.txt
 apk del $BUILD_DEPS
-su - salt -c 'salt-run salt.cmd tls.create_self_signed_cert'
 EOF
 
 FROM salt-base AS salt-master
@@ -60,6 +53,6 @@ EXPOSE 4505 4506 8000
 
 FROM salt-base AS salt-minion
 LABEL name='salt-box-salt-minion'
-LABEL version='0.4'
+LABEL version='0.5'
 COPY docker/minion/minion.yaml /etc/salt/minion.d/minion.conf
 CMD ["/usr/local/bin/salt-minion"]

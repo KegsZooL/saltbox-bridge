@@ -1,4 +1,3 @@
-user: salt
 module_dirs:
   - /srv/salt_extmod/
 file_root:
