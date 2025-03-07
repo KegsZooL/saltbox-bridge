@@ -3,6 +3,10 @@ module_dirs:
 file_root:
   base:
     - /srv/salt/
+file_ignore_glob:
+  - '*/.git/*'
+  - '*.pyc'
+  - '*.swp'
 auto_accept: true
 log_level: '${SALT_MASTER_LOG_LEVEL}'
 log_level_logfile: 'quiet'
