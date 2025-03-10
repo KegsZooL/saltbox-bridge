@@ -29,6 +29,7 @@ EOF
 FROM salt-base AS salt-master
 LABEL name='salt-box-salt-master'
 LABEL version='1.2'
+LABEL release='1'
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
 RUN \
