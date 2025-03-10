@@ -21,7 +21,8 @@ set -e
 apk add $BUILD_DEPS
 echo 'cython<3' > /root/constraint.txt
 PIP_CONSTRAINT=/root/constraint.txt USE_STATIC_REQUIREMENTS=1 \
-  pip3 install --no-build-isolation "salt==${SALT_VERSION}" 'pygit2==1.13.1'
+  pip3 install --no-build-isolation "salt==${SALT_VERSION}"
+pip3 install 'pygit2==1.13.1'
 rm /root/constraint.txt
 apk del $BUILD_DEPS
 EOF
