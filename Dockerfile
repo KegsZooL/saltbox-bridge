@@ -57,6 +57,12 @@ EXPOSE 4505 4506 8000
 
 FROM salt-base AS salt-minion
 LABEL name='salt-box-salt-minion'
-LABEL version='0.6'
-COPY docker/minion/minion.yaml /etc/salt/minion.d/minion.conf
+LABEL version='0.7'
+
+RUN mkdir --parents /etc/salt/minion.d/
+COPY --chmod=755 docker/minion/minion_entrypoint.sh /usr/local/bin/
+
+ENV SALT_MASTER=salt-master
+ENV MINION_ID_PREFIX=moc-minion
+ENTRYPOINT ["/usr/local/bin/minion_entrypoint.sh"]
 CMD ["/usr/local/bin/salt-minion"]
