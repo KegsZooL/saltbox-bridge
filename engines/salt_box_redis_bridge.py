@@ -25,7 +25,8 @@ from typing import Any, Literal
 
 import redis.asyncio as redis
 
-from salt.exceptions import SaltRunnerError, SaltMasterError  # type: ignore
+from salt.client import LocalClient  # type:ignore
+from salt.exceptions import SaltException, SaltRunnerError, SaltMasterError  # type: ignore
 from salt.utils.event import get_master_event  # type: ignore
 from salt.utils import json  # type: ignore
 
@@ -70,6 +71,10 @@ class StopProcessing(Exception):
 class BaseMessageHandler(abc.ABC):
     def __init__(self, redis_client: redis.Redis) -> None:
         self.redis_client = redis_client
+
+    @property
+    def salt_client(self) -> LocalClient:
+        return LocalClient(c_path=None, mopts=__opts__, auto_reconnect=True)  # type: ignore
 
     @property
     @abc.abstractmethod
@@ -218,6 +223,20 @@ class PresenceMessageHandler(BaseMessageHandler):
         await self.redis_client.publish(channel=f'presence', message=json.dumps(message))
 
 
+class MinionStartedMessageHandler(BaseMessageHandler):
+    TAG_PATTERN = re.compile(r'salt/minion/(?P<mid>.+)/start')
+
+    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+        mid = match.group('mid')
+
+        LOGGER.debug(f'salt/minion/{mid}/start')
+
+        try:
+            self.salt_client.cmd_async(tgt=mid, fun='grains.items')
+        except SaltException as err:
+            LOGGER.exception(str(err))
+
+
 class RedisPusher:
     def __init__(
         self,
@@ -230,6 +249,7 @@ class RedisPusher:
             JobReturnMessageHandler(redis_client, expire=expire),
             JobReturnForTaskMessageHandler(redis_client, expire=expire),
             PresenceMessageHandler(redis_client),
+            MinionStartedMessageHandler(redis_client),
         ]
 
     async def process(self, event: dict | None) -> None:
