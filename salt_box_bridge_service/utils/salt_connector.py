@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 import json
 import logging
 
 from redis.asyncio import Redis
-from salt.client import LocalClient  # type:ignore
-from salt.exceptions import SaltException  # type:ignore
+from salt.client import LocalClient
+from salt.exceptions import SaltException
 
 from salt_box_bridge_service.exceptions import CreateJobError
-
 
 LOGGER = logging.getLogger(__name__)
 
 
-class JobCreator:
+class SaltConnector:
     def __init__(self, salt_opts: dict, redis_client: Redis) -> None:
         self.salt_opts = salt_opts
         self.redis_client = redis_client
@@ -20,7 +21,7 @@ class JobCreator:
     def salt_client(self) -> LocalClient:
         # Common case is to recreate the LocalClient before use. Keeping it leads to errors.
         # mopts takes preloaded master options to avoid re-reading configs.
-        return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
+        return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)  # type: ignore
 
     async def create_job_from_redis(self, hash_name: str) -> str:
         job_data: dict[bytes, bytes] = await self.redis_client.hgetall(hash_name)
@@ -38,12 +39,7 @@ class JobCreator:
 
         try:
             back_jid: str = self.salt_client.cmd_async(
-                tgt=tgt,
-                tgt_type=tgt_type,
-                fun=fun,
-                arg=arg,
-                kwarg=kwarg,
-                jid=jid
+                tgt=tgt, tgt_type=tgt_type, fun=fun, arg=arg, kwarg=kwarg, jid=jid
             )
         except SaltException as err:
             LOGGER.exception(str(err))
@@ -65,3 +61,6 @@ class JobCreator:
                 continue
 
         return jobs_jid
+
+    async def gather_minions(self, tgt: str, tgt_type: str) -> list[str]:
+        return self.salt_client.gather_minions(tgt, tgt_type)

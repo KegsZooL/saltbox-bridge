@@ -1,2 +1,4 @@
 redis~=5.0.4
+faststream[redis]==0.5.34
+pydantic==2.8.2
 salt

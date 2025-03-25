@@ -11,12 +11,16 @@ error() {
 
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
 [ -z "$REDIS_PASSWORD_FILE" ] && error 'Missing REDIS_PASSWORD_FILE value'
+[ -z "$MASTER_SECRET_FILE" ] && error 'Missing $MASTER_SECRET_FILE value'
 
 REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
 export REDIS_PASSWORD
 
+MASTER_SECRET="$(cat "$MASTER_SECRET_FILE")"
+export MASTER_SECRET
+
 mkdir --parents /etc/salt/master.d/
-envsubst '$SALT_MASTER_LOG_LEVEL $REDIS_USERNAME $REDIS_PASSWORD' \
+envsubst '$SALT_MASTER_LOG_LEVEL $REDIS_USERNAME $REDIS_PASSWORD $MASTER_SECRET' \
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
 

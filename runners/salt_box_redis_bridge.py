@@ -2,14 +2,13 @@
 FastMS engines.salt_box_redis_bridge related functions
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import redis
-
 from salt.exceptions import CommandExecutionError  # type: ignore
 
 
-def __virtual__() -> bool:
+def __virtual__() -> bool:  # noqa: N807
     return True
 
 
@@ -36,8 +35,8 @@ def cleanup_expired_jobs(expire: int, redis_host='localhost', port=6379, db=0) -
         salt-run salt_box_redis_bridge.cleanup_expired_jobs 3600 redis_host=redis-host
     """
     redis_client = redis.Redis(host=redis_host, port=port, db=db)
-    expiration_time = (datetime.now() - timedelta(seconds=expire)).timestamp()
+    expiration_time = (datetime.now(tz=timezone.utc) - timedelta(seconds=expire)).timestamp()
     try:
         return redis_client.zremrangebyscore('jobs', min=0.0, max=expiration_time)
     except redis.ConnectionError as err:
-        raise CommandExecutionError(err)
+        raise CommandExecutionError(err) from err

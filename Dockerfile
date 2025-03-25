@@ -49,6 +49,7 @@ COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/
 
 ENV REDIS_USERNAME=redis
 ENV REDIS_PASSWORD_FILE=
+ENV MASTER_SECRET_FILE=
 ENV SALT_MASTER_LOG_LEVEL=warning
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["salt-master"]

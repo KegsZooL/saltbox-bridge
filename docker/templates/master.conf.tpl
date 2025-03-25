@@ -20,7 +20,16 @@ engines:
       ssl_ca_certs: '/etc/redis/certs/ca.crt'
       # Time to live for job returns and grains (sec)
       expire: 604800
-  - salt_box_service: {}
+      master_secret: '${MASTER_SECRET}'
+  - salt_box_service:
+      redis_host: redis-salt
+      username: '${REDIS_USERNAME}'
+      password: '${REDIS_PASSWORD}'
+      ssl: true
+      ssl_ca_certs: '/etc/redis/certs/ca.crt'
+      # Time to live for job returns and grains (sec)
+      expire: 604800
+      master_secret: '${MASTER_SECRET}'
 schedule:
   salt_box_redis_bridge_cleanup:
     hours: 3
