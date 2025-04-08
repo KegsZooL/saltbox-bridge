@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
@@ -10,11 +9,11 @@ from faststream.broker.message import StreamMessage
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 from faststream.utils.context.repository import context
-from redis.asyncio import Redis
 
 from salt_box_bridge_service.exceptions import CreateJobError
 from salt_box_bridge_service.schemas.base_schemas import BaseInAbstractMessage
 from salt_box_bridge_service.schemas.in_schemas import GatherMinionsInMessage, NewJobIneMessage
+from salt_box_bridge_service.schemas.out_schemas import GatherMinionsOutMessage, Minion
 from salt_box_bridge_service.utils.salt_connector import SaltConnector
 
 LOGGER = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class MastersAuthMiddleware(BaseMiddleware):
             return
 
         if message.check_checksum(secret):
-            await super().consume_scope(call_next, msg)
+            return await super().consume_scope(call_next, msg)
         else:
             LOGGER.error('Checksum failed')
 
@@ -61,15 +60,15 @@ async def gather_minions(
     message: GatherMinionsInMessage,
     salt_master: str = Context(),
     salt_connector: SaltConnector = Context(),  # noqa: B008
-    redis_client: Redis = Context(),  # noqa: B008
-) -> str | None:
+    master_secret: str = Context(),
+) -> GatherMinionsOutMessage:
     minions: list[str] = await salt_connector.gather_minions(tgt=message.tgt, tgt_type=message.tgt_type)
-    key: str = f'{salt_master}__{message.tgt}__{message.tgt_type}'
 
-    result: dict = {
-        'count': len(minions),
-        'minions': [{'minion_id': minion, 'master': salt_master} for minion in minions[:100]],
-    }
+    result = GatherMinionsOutMessage(
+        count=len(minions),
+        minions=[Minion(minion_id=minion, master=salt_master) for minion in minions[:100]],
+        master=salt_master,
+    )
+    result.fill_checksum(secret=master_secret)
 
-    await redis_client.hset(name='minions-cache', key=key, value=json.dumps(result))
-    await redis_client.hpexpire('minions-cache', 15 * 1000, key)
+    return result
