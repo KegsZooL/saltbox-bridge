@@ -120,23 +120,6 @@ schedule:
 }
 ```
 
-#### Grains
-
-Grains будут храниться в хэш-таблице `minion:{mid}:grains`. Ключом будет имя grain, а значением — JSON-представление значения grain.
-
-Пример:
-
-```json
-{
-  "name": "minion:minion1:grains",
-  "data": {
-    "os": "\"Ubuntu\"",
-    "cpuarch": "\"x86_64\"",
-    ...
-  }
-}
-```
-
 ### Каналы
 
 #### Канал для новых job
@@ -161,17 +144,6 @@ Grains будут храниться в хэш-таблице `minion:{mid}:grai
 Сообщение: {"fun": "test.ping", "jid": "20230101010101000000", "return": true}
 ```
 
-#### Канал для grains
-
-Для каждого minion будет создан канал `minion:{mid}:grains`, в который будет отправлено JSON-представление данных grains.
-
-Пример:
-
-```
-Канал: minion:minion1:grains
-Сообщение: {"os": "Ubuntu", "cpuarch": "x86_64"}
-```
-
 ## Блок-схемы
 
 ### Обработка новых job
@@ -194,5 +166,4 @@ graph TD
     E -->|Да| F[Обработка grains]
     E -->|Нет| G[Завершение обработки]
     F --> H[Добавить grains в Redis]
-    H --> I[Публикация в канал minion:mid:grains]
 ```

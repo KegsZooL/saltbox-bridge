@@ -97,7 +97,6 @@ def start(
     expire: int | None = None,
     master_secret: str | None = None,
 ) -> None:
-    LOGGER.error(salt_opts)
     redis_client = redis.Redis(
         host=redis_host,
         port=port,

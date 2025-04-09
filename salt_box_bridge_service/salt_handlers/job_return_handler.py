@@ -65,17 +65,6 @@ class JobReturnMessageHandler(BaseMessageHandler):
         if not grains:
             return
 
-        mapping = {k: json.dumps(val) for k, val in grains.items()}
-
-        hash_name = f'minion:{mid}:grains'
-        async with self.redis_client.pipeline(transaction=True) as pipe:
-            pipe = pipe.hset(name=hash_name, mapping=mapping)
-            if self.expire is not None:
-                pipe = pipe.expire(name=hash_name, time=self.expire)  # type: ignore
-            await pipe.execute()
-        dumped_grains = json.dumps(grains)
-        await self.redis_client.publish(channel=hash_name, message=dumped_grains)
-
         message = GrainsOutMessage(master=self.salt_opts['salt_box_master_id'], grains=grains)
         await self.send_message(message=message, message_tag='grains')
 
