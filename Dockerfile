@@ -1,5 +1,6 @@
 ARG ALPINE_VERSION='3.20'
-ARG PYTHON_VERSION='3.10'
+# Current 3.10 == 3.10.17 seems broken for now 2025-04-09
+ARG PYTHON_VERSION='3.10.16'
 
 # TODO Altlinux branch US49_altlinux
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} AS salt-base
@@ -13,14 +14,12 @@ RUN \
   apk add binutils libgit2 libffi openssl-dev
 
 # pygit2 depends on specific libgit2 version
-# FIXME upgade setuptools is workaround for missing `bdist_wheel`
 RUN \
   --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   --mount=type=cache,target=/root/.cache/pip/ \
 <<EOF
 set -e
 apk add $BUILD_DEPS
-pip3 install --upgrade setuptools
 echo 'cython<3' > /root/constraint.txt
 PIP_CONSTRAINT=/root/constraint.txt USE_STATIC_REQUIREMENTS=1 \
   pip3 install --no-build-isolation "salt==${SALT_VERSION}"
