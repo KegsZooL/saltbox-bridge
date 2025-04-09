@@ -13,12 +13,14 @@ RUN \
   apk add binutils libgit2 libffi openssl-dev
 
 # pygit2 depends on specific libgit2 version
+# FIXME upgade setuptools is workaround for missing `bdist_wheel`
 RUN \
   --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   --mount=type=cache,target=/root/.cache/pip/ \
 <<EOF
 set -e
 apk add $BUILD_DEPS
+pip3 install --upgrade setuptools
 echo 'cython<3' > /root/constraint.txt
 PIP_CONSTRAINT=/root/constraint.txt USE_STATIC_REQUIREMENTS=1 \
   pip3 install --no-build-isolation "salt==${SALT_VERSION}"
