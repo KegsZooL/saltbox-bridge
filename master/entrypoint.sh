@@ -2,12 +2,17 @@
 # shellcheck disable=SC2016
 #
 set -e
-trap '[ $? -eq 0 ] && exit 0 || echo "ERROR on $0 line ${LINENO}"' EXIT
 
 error() {
   >&2 echo "$1"
   exit 1
 }
+
+if [ "$SALT_BOX_DEV_MODE" = 1 ]; then
+  # Update install
+  chown -R "$(id -u):$(id -g)" "$SALT_BOX_BRIDGE_SERVICE_SRC_PATH"
+  pip3 install --editable "$SALT_BOX_BRIDGE_SERVICE_SRC_PATH"
+fi
 
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
 [ -z "$REDIS_PASSWORD_FILE" ] && error 'Missing REDIS_PASSWORD_FILE value'

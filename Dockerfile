@@ -4,15 +4,12 @@ ARG PYTHON_VERSION='3.10.16'
 
 # TODO Altlinux branch US49_altlinux
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} AS salt-base
-
 ARG SALT_VERSION='3006.9'
-
 ARG BUILD_DEPS="gcc g++ autoconf make libffi-dev libgit2-dev"
-
+# Base dependencies
 RUN \
   --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add binutils libgit2 libffi openssl-dev
-
 # pygit2 depends on specific libgit2 version
 RUN \
   --mount=type=cache,target=/var/cache/apk/,sharing=locked \
@@ -28,26 +25,17 @@ rm /root/constraint.txt
 apk del $BUILD_DEPS
 EOF
 
-FROM salt-base AS salt-master
-LABEL name='salt-box-salt-master'
-LABEL version='1.2'
-LABEL release='1'
+
+FROM salt-base AS salt-master-base
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
-RUN \
-  --mount=type=bind,target=/mnt/,readwrite \
-  --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install /mnt/
 # To avoid error messag on cleanup keys
 RUN mkdir --parents /var/cache/salt/master/
-
-COPY docker/config/master_id.conf /etc/salt/master.d/
-COPY docker/templates/ /root/templates/
-
+COPY master/config/master_id.conf /etc/salt/master.d/
+COPY master/templates/ /root/templates/
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
-COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/
-
+COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
 ENV REDIS_USERNAME=redis
 ENV REDIS_PASSWORD_FILE=
 ENV MASTER_SECRET_FILE=
@@ -57,13 +45,34 @@ CMD ["salt-master"]
 EXPOSE 4505 4506 8000
 
 
-FROM salt-base AS salt-minion
+FROM salt-master-base AS salt-master
+LABEL name='salt-box-salt-master'
+LABEL version='2.0'
+LABEL release='1'
+RUN \
+  --mount=type=bind,target=/mnt/,readwrite \
+  --mount=type=cache,target=/root/.cache/pip/ \
+  pip3 install /mnt/salt_box_bridge_service/
+
+
+
+FROM salt-master-base AS salt-master-dev
+LABEL name='salt-box-salt-master-dev'
+LABEL version='0.2'
+LABEL release='1'
+ENV SALT_BOX_BRIDGE_SERVICE_SRC_PATH=/root/salt_box_bridge_service/
+ENV SALT_BOX_DEV_MODE=1
+COPY salt_box_bridge_service/ $SALT_BOX_BRIDGE_SERVICE_SRC_PATH
+RUN \
+  --mount=type=cache,target=/root/.cache/pip/ \
+  pip3 install --editable "$SALT_BOX_BRIDGE_SERVICE_SRC_PATH"
+
+
+FROM salt-base AS salt-moc-minion
 LABEL name='salt-box-salt-minion'
-LABEL version='0.7'
-
+LABEL version='0.8'
 RUN mkdir --parents /etc/salt/minion.d/
-COPY --chmod=755 docker/minion/minion_entrypoint.sh /usr/local/bin/
-
+COPY --chmod=755 minion/minion_entrypoint.sh /usr/local/bin/
 ENV SALT_MASTER=salt-master
 ENV MINION_ID_PREFIX=moc-minion
 ENV SALT_MINION_LOG_LEVEL=warning
