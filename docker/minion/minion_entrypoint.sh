@@ -14,6 +14,11 @@ if [ ! -f "$id_conf" ]; then
   echo "id: ${minion_id}" > "$id_conf"
 fi
 
-echo "master: ${SALT_MASTER}" > /etc/salt/minion.d/master.conf
+cat << EOF > /etc/salt/minion
+master: '${SALT_MASTER}'
+log_level: ${SALT_MINION_LOG_LEVEL}
+master_tries: -1  # Prevents exception on unanswered master IP
+retry_dns: ${SALT_MINION_RETRY_DNS}
+EOF
 
 exec "$@"

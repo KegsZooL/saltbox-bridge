@@ -66,5 +66,8 @@ COPY --chmod=755 docker/minion/minion_entrypoint.sh /usr/local/bin/
 
 ENV SALT_MASTER=salt-master
 ENV MINION_ID_PREFIX=moc-minion
+ENV SALT_MINION_LOG_LEVEL=warning
+# How often to rentry on master hostname lookup error (sec)
+ENV SALT_MINION_RETRY_DNS=30
 ENTRYPOINT ["/usr/local/bin/minion_entrypoint.sh"]
 CMD ["/usr/local/bin/salt-minion"]
