@@ -7,18 +7,18 @@ master to Salt.Box.
 ## Manual installation
 0. Get Redis root certificate with command inside `salt-box-compose`:
   ```bash
-  sudo docker compose cp redis-salt:/etc/redis/certs/ca.crt ./
+  sudo docker compose cp redis-salt:/etc/redis/certs/ca.crt ./redis-ca.crt
   ```
-1. Copy files to Salt master you want to connect.
-2. Put `*.py` files from (`engines/`)[./engines/] to Salt engines dir e.g.
+1. Copy `salt-box-bridge` files and the `redis-ca.crt` to Salt master you want to connect.
+2. Put `*.py` files from [`engines/`])(./engines/) to Salt engines dir e.g.
   `/srv/salt_extmod/engines/`. 
-3. Put  `*.py` files from (`runners/`)[./runners/] to Salt runner modules dir
+3. Put  `*.py` files from [`runners/`](./runners/) to Salt runner modules dir
    e.g. `/srv/salt_extmod/runners/`.
-4. Install the (`salt_box_bridge_service`)[./salt\_box\_bridge\_service/] module:
+4. Install the [`salt_box_bridge_service`](./salt\_box\_bridge\_service/) module:
   ```bash
   sudo pip3 install `./salt_box_bridge_service/`
   ```
-5. Save `ca.crt` from the first step e.g. as `/etc/salt/ssl/redis-ca.crt`
+5. Put `redis-ca.crt` from the first step e.g. to `/etc/salt/ssl/`
 
 
 Owner for copied files should be the same as `salt-master` process user
