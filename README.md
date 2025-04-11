@@ -10,7 +10,7 @@ master to Salt.Box.
   sudo docker compose cp redis-salt:/etc/redis/certs/ca.crt ./redis-ca.crt
   ```
 1. Copy `salt-box-bridge` files and the `redis-ca.crt` to Salt master you want to connect.
-2. Put `*.py` files from [`engines/`])(./engines/) to Salt engines dir e.g.
+2. Put `*.py` files from [`engines/`](./engines/) to Salt engines dir e.g.
   `/srv/salt_extmod/engines/`. 
 3. Put  `*.py` files from [`runners/`](./runners/) to Salt runner modules dir
    e.g. `/srv/salt_extmod/runners/`.
