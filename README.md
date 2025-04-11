@@ -4,6 +4,9 @@
 Bridge component is a set of additional SaltStack modules to connect Salt
 master to Salt.Box.
 
+Currentrly supported salt-master versions:
+- 3006.9
+
 ## Manual installation
 0. Get Redis root certificate with command inside `salt-box-compose`:
   ```bash
