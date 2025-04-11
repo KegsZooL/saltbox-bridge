@@ -4,10 +4,9 @@ import logging
 import re
 from typing import Any
 
-import redis.asyncio as redis
-from faststream.redis import RedisBroker
 from salt.utils import json
 
+from salt_box_bridge_service.config import SETTINGS
 from salt_box_bridge_service.exceptions import StopProcessing
 from salt_box_bridge_service.salt_handlers.base_handler import BaseMessageHandler
 from salt_box_bridge_service.schemas.out_schemas import GrainsOutMessage
@@ -21,17 +20,6 @@ class JobReturnMessageHandler(BaseMessageHandler):
     """
 
     tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
-
-    def __init__(
-        self,
-        redis_client: redis.Redis,
-        broker: RedisBroker,
-        salt_opts: dict,
-        expire: int | None,
-        master_secret: str | None,
-    ) -> None:
-        self.expire = expire
-        super().__init__(redis_client=redis_client, broker=broker, salt_opts=salt_opts, master_secret=master_secret)
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         jid = match.group('jid')
@@ -51,8 +39,8 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         async with self.redis_client.pipeline(transaction=True) as pipe:
             pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
-            if self.expire is not None:
-                pipe = pipe.expire(name=hash_name, time=self.expire)  # type: ignore
+            if SETTINGS.expire is not None:
+                pipe = pipe.expire(name=hash_name, time=SETTINGS.expire)  # type: ignore
             await pipe.execute()
 
         await self.redis_client.publish(channel=hash_name, message=data_json)

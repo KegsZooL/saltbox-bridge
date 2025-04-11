@@ -29,4 +29,10 @@ envsubst '$SALT_MASTER_LOG_LEVEL $REDIS_USERNAME $REDIS_PASSWORD $MASTER_SECRET'
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
 
+
+mkdir --parents /etc/salt/salt_box.d/
+envsubst '$SALT_MASTER_LOG_LEVEL $REDIS_USERNAME $REDIS_PASSWORD $MASTER_SECRET' \
+  < /root/templates/.env.tpl \
+  > /etc/salt/salt_box.d/.env
+
 exec "$@"

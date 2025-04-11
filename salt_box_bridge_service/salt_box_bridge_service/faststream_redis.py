@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import ssl
 from collections.abc import Callable
-from typing import Literal
 
 from faststream import FastStream
 from faststream.redis import RedisBroker, RedisRouter
@@ -11,26 +10,15 @@ from faststream.redis.publisher.asyncapi import AsyncAPIPublisher
 from faststream.redis.subscriber.asyncapi import AsyncAPISubscriber
 from faststream.security import SASLPlaintext
 
-
-class RedisConf:
-    def __init__(
-        self,
-        url: str,
-        username: str,
-        password: str,
-        ssl_cert_reqs: Literal['none', 'optional', 'required'] = 'required',
-        ssl_ca_certs: str | None = None,
-    ):
-        self.url = url
-        self.username = username
-        self.password = password
-        self.ssl_cert_reqs = ssl_cert_reqs
-        self.ssl_ca_certs = ssl_ca_certs
+from salt_box_bridge_service.config import SETTINGS, FaststreamRedisConf
 
 
 def get_faststream_broker(
-    redis_conf: RedisConf,
+    redis_conf: FaststreamRedisConf | None = None,
 ) -> RedisBroker:
+    if redis_conf is None:
+        redis_conf = SETTINGS.faststream_redis_conf
+
     if redis_conf.url.startswith('rediss:'):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
         ssl_context.verify_mode = {
@@ -51,7 +39,7 @@ def get_faststream_broker(
 
 def get_faststream_subscriber(
     channel: str,
-    redis_conf: RedisConf | None = None,
+    redis_conf: FaststreamRedisConf | None = None,
     broker: RedisBroker | None = None,
 ) -> AsyncAPISubscriber:
     if not broker:
@@ -66,7 +54,7 @@ def get_faststream_subscriber(
 
 def get_faststream_publisher(
     channel: str,
-    redis_conf: RedisConf | None = None,
+    redis_conf: FaststreamRedisConf | None = None,
     broker: RedisBroker | None = None,
 ) -> AsyncAPIPublisher:
     if not broker:
@@ -81,7 +69,7 @@ def get_faststream_publisher(
 
 def get_faststream_app(
     routers: list[RedisRouter],
-    redis_conf: RedisConf | None = None,
+    redis_conf: FaststreamRedisConf | None = None,
     broker: RedisBroker | None = None,
     lifespan: Callable | None = None,
 ) -> FastStream:

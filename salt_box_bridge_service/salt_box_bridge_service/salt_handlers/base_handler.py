@@ -8,6 +8,7 @@ import redis.asyncio as redis
 from faststream.redis import RedisBroker
 from salt.client import LocalClient
 
+from salt_box_bridge_service.config import SETTINGS
 from salt_box_bridge_service.schemas.base_schemas import BaseOutMessage
 
 
@@ -20,11 +21,10 @@ class BaseMessageHandler(abc.ABC):
         salt_opts: Salt options
     """
 
-    def __init__(self, redis_client: redis.Redis, broker: RedisBroker, salt_opts: dict, master_secret: str) -> None:
+    def __init__(self, redis_client: redis.Redis, broker: RedisBroker, salt_opts: dict) -> None:
         self.redis_client = redis_client
         self.broker = broker
         self.salt_opts = salt_opts
-        self.master_secret = master_secret
 
     @property
     def salt_client(self) -> LocalClient:
@@ -32,7 +32,7 @@ class BaseMessageHandler(abc.ABC):
 
     async def send_message(self, message: BaseOutMessage, message_tag: str) -> None:
         async with self.broker as br:
-            message.fill_checksum(secret=self.master_secret)
+            message.fill_checksum(secret=SETTINGS.master_secret)
 
             await br.publish(message=message, channel=f'master_{message_tag}')
 

@@ -12,7 +12,7 @@ from faststream.utils.context.repository import context
 
 from salt_box_bridge_service.exceptions import CreateJobError
 from salt_box_bridge_service.schemas.base_schemas import BaseInAbstractMessage
-from salt_box_bridge_service.schemas.in_schemas import GatherMinionsInMessage, NewJobIneMessage
+from salt_box_bridge_service.schemas.in_schemas import GatherMinionsInMessage, NewJobIneMessage, NewJobSyncIneMessage
 from salt_box_bridge_service.schemas.out_schemas import GatherMinionsOutMessage, Minion
 from salt_box_bridge_service.utils.salt_connector import SaltConnector
 
@@ -24,13 +24,12 @@ class MastersAuthMiddleware(BaseMiddleware):
     async def consume_scope(self, call_next: Callable[[Any], Awaitable[Any]], msg: StreamMessage[Any]) -> Any:
         message: BaseInAbstractMessage = BaseInAbstractMessage(**await msg.decode())  # type: ignore
 
-        secret: str = context.get('master_secret')
         salt_master: str = context.get('salt_master')
 
         if message.master and message.master != salt_master:
             return
 
-        if message.check_checksum(secret):
+        if message.check_checksum():
             return await super().consume_scope(call_next, msg)
         else:
             LOGGER.error('Checksum failed')
@@ -60,7 +59,6 @@ async def gather_minions(
     message: GatherMinionsInMessage,
     salt_master: str = Context(),
     salt_connector: SaltConnector = Context(),  # noqa: B008
-    master_secret: str = Context(),
 ) -> GatherMinionsOutMessage:
     minions: list[str] = await salt_connector.gather_minions(tgt=message.tgt, tgt_type=message.tgt_type)
 
@@ -69,6 +67,6 @@ async def gather_minions(
         minions=[Minion(minion_id=minion, master=salt_master) for minion in minions[:100]],
         master=salt_master,
     )
-    result.fill_checksum(secret=master_secret)
+    result.fill_checksum()
 
     return result

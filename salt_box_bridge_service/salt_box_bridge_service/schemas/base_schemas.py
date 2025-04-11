@@ -4,6 +4,8 @@ import hashlib
 
 from pydantic import BaseModel, ConfigDict
 
+from salt_box_bridge_service.config import SETTINGS
+
 
 class AuthMessage(BaseModel):
     master: str
@@ -23,7 +25,10 @@ class BaseMessage(BaseModel):
 class BaseInAbstractMessage(BaseMessage):
     checksum: str
 
-    def check_checksum(self, secret: str) -> bool:
+    def check_checksum(self, secret: str | None = None) -> bool:
+        if secret is None:
+            secret = SETTINGS.master_secret
+
         return self.checksum == self._get_checksum(secret)
 
     model_config = ConfigDict(extra='allow')
@@ -36,5 +41,8 @@ class BaseInMessage(BaseInAbstractMessage):
 class BaseOutMessage(BaseMessage):
     master: str
 
-    def fill_checksum(self, secret: str):
+    def fill_checksum(self, secret: str | None = None) -> None:
+        if secret is None:
+            secret = SETTINGS.master_secret
+
         self.checksum = self._get_checksum(secret)

@@ -4,7 +4,7 @@
 Bridge component is a set of additional SaltStack modules to connect Salt
 master to Salt.Box.
 
-Currentrly supported salt-master versions:
+Currently supported salt-master versions:
 - 3006.9
 
 ## Manual installation
@@ -48,33 +48,11 @@ presence_events: True
 ## Set real values
 engines:
   - salt_box_redis_bridge:
-## REDIS_HOST is host with deployted salt-box-compose
-      redis_host: 'REDIS_HOST'
-## REDIS_USERNAME is REDIS_SALT_USERNAME from salt-box-compose `.env` file
-      username: 'REDIS_USERNAME'
-## REDIS_PASSWORD is in `secrets/redis_salt_password`
-      password: 'REDIS_PASSWORD'
-      ssl: true
-## Where the cert had been saved before
-      ssl_ca_certs: '/etc/salt/ssl/redis-ca.crt'
-      # Time to live for job returns and grains (sec)
-      expire: 604800
-## Generate MASTER_SECRET e.g. with `pwgen -sN 1 16` command
-      master_secret: 'MASTER_SECRET'
+      # Path to .env file
+      salt_box_env_file: '/etc/salt/salt_box.d/.env'
   - salt_box_service:
-## REDIS_HOST is host with deployted salt-box-compose
-      redis_host: 'REDIS_HOST'
-## REDIS_USERNAME is REDIS_SALT_USERNAME from salt-box-compose `.env` file
-      username: 'REDIS_USERNAME'
-## REDIS_PASSWORD is in `secrets/redis_salt_password`
-      password: 'REDIS_PASSWORD'
-      ssl: true
-## Where the cert had been saved before
-      ssl_ca_certs: '/etc/salt/ssl/redis-ca.crt'
-      # Time to live for job returns and grains (sec)
-      expire: 604800
-## The same MASTER_SECRET as in salt_box_redis_bridge_config
-      master_secret: 'MASTER_SECRET'
+      # Path to .env file
+      salt_box_env_file: '/etc/salt/salt_box.d/.env'
 
 ## Strictly recommended to cleanup historical data
 schedule:
@@ -85,6 +63,30 @@ schedule:
       # Age of jobs to delete (sec)
       expire: 604800
       redis_host: redis-salt
+```
+
+`.env` file:
+```
+# /etc/salt/salt_box.d/.env
+
+# Redis conf:
+
+## REDIS_HOST is host with deployted salt-box-compose
+REDIS_HOST="REDIS_HOST"
+## REDIS_USERNAME is REDIS_SALT_USERNAME from salt-box-compose `.env` file
+REDIS_USERNAME="REDIS_USERNAME"
+## REDIS_PASSWORD is in `secrets/redis_salt_password`
+REDIS_PASSWORD="REDIS_PASSWORD"
+REDIS_SSL_USE=True
+## Where the cert had been saved before
+REDIS_SSL_CA_CERTS: '/etc/salt/ssl/redis-ca.crt'
+
+# Salt.box bridge conf:
+
+# Time to live for job returns and grains (sec)
+EXPIRE: 604800
+## The same MASTER_SECRET as in salt_box_redis_bridge_config
+MASTER_SECRET: 'MASTER_SECRET'
 ```
 
 Use `./make_maser_id.sh` helper script to create id with hostname and timestamp

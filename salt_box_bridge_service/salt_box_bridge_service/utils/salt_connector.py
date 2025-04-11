@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import cast
 
 from redis.asyncio import Redis
 from salt.client import LocalClient
 from salt.exceptions import SaltException
 
 from salt_box_bridge_service.exceptions import CreateJobError
+from salt_box_bridge_service.utils.types import SaltTgtType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class SaltConnector:
 
         jid: str = job_data[b'jid'].decode()
         tgt: str = job_data[b'tgt'].decode()
-        tgt_type: str = job_data[b'tgt_type'].decode()
+        tgt_type: SaltTgtType = cast(SaltTgtType, job_data[b'tgt_type'].decode())
         fun: str = job_data[b'fun'].decode()
         arg: list = json.loads(job_data[b'arg']) if b'arg' in job_data else []
         kwarg: dict = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else {}
@@ -63,4 +65,5 @@ class SaltConnector:
         return jobs_jid
 
     async def gather_minions(self, tgt: str, tgt_type: str) -> list[str]:
+    async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> list[str]:
         return self.salt_client.gather_minions(tgt, tgt_type)

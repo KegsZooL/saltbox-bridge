@@ -13,23 +13,9 @@ log_level_logfile: 'quiet'
 presence_events: True
 engines:
   - salt_box_redis_bridge:
-      redis_host: redis-salt
-      username: '${REDIS_USERNAME}'
-      password: '${REDIS_PASSWORD}'
-      ssl: true
-      ssl_ca_certs: '/etc/redis/certs/ca.crt'
-      # Time to live for job returns and grains (sec)
-      expire: 604800
-      master_secret: '${MASTER_SECRET}'
+      salt_box_env_file: '/etc/salt/salt_box.d/.env'
   - salt_box_service:
-      redis_host: redis-salt
-      username: '${REDIS_USERNAME}'
-      password: '${REDIS_PASSWORD}'
-      ssl: true
-      ssl_ca_certs: '/etc/redis/certs/ca.crt'
-      # Time to live for job returns and grains (sec)
-      expire: 604800
-      master_secret: '${MASTER_SECRET}'
+      salt_box_env_file: '/etc/salt/salt_box.d/.env'
 schedule:
   salt_box_redis_bridge_cleanup:
     hours: 3
