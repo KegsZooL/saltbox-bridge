@@ -65,7 +65,7 @@ schedule:
       redis_host: redis-salt
 ```
 
-`.env` file:
+Put `.env` file to `/etc/salt/salt_box.d/`:
 ```
 # /etc/salt/salt_box.d/.env
 
@@ -79,7 +79,7 @@ REDIS_USERNAME="REDIS_USERNAME"
 REDIS_PASSWORD="REDIS_PASSWORD"
 REDIS_SSL_USE=True
 ## Where the cert had been saved before
-REDIS_SSL_CA_CERTS: '/etc/salt/ssl/redis-ca.crt'
+REDIS_SSL_CA_CERTS="/etc/salt/ssl/redis-ca.crt"
 
 # Salt.box bridge conf:
 
