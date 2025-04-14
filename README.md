@@ -84,9 +84,9 @@ REDIS_SSL_CA_CERTS: '/etc/salt/ssl/redis-ca.crt'
 # Salt.box bridge conf:
 
 # Time to live for job returns and grains (sec)
-EXPIRE: 604800
+EXPIRE=604800
 ## The same MASTER_SECRET as in salt_box_redis_bridge_config
-MASTER_SECRET: 'MASTER_SECRET'
+MASTER_SECRET="MASTER_SECRET"
 ```
 
 Use `./make_maser_id.sh` helper script to create id with hostname and timestamp
