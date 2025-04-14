@@ -7,6 +7,7 @@ from salt_box_bridge_service.config import SETTINGS
 from salt_box_bridge_service.service import start as start_service
 
 __opts__: dict
+__salt__: dict
 
 LOGGER = logging.getLogger(__name__)
 

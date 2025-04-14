@@ -13,7 +13,7 @@ from faststream.utils.context.repository import context
 from salt_box_bridge_service.exceptions import CreateJobError
 from salt_box_bridge_service.schemas.base_schemas import BaseInAbstractMessage
 from salt_box_bridge_service.schemas.in_schemas import GatherMinionsInMessage, NewJobIneMessage, NewJobSyncIneMessage
-from salt_box_bridge_service.schemas.out_schemas import GatherMinionsOutMessage, Minion
+from salt_box_bridge_service.schemas.out_schemas import GatherMinionsOutMessage, JobReturn, JobSyncOutMessage, Minion
 from salt_box_bridge_service.utils.salt_connector import SaltConnector
 
 LOGGER = logging.getLogger(__name__)
@@ -50,6 +50,37 @@ async def run_job(
         )
         logger.info('Created job: %s', jid)
         return jid
+    except CreateJobError as error:
+        logger.error(error)
+
+
+@router.subscriber('run_job_sync')
+async def run_job_sync(
+    message: NewJobSyncIneMessage,
+    logger: Logger,
+    salt_connector: SaltConnector = Context(),  # noqa: B008
+) -> JobSyncOutMessage | None:
+    try:
+        job_result: dict = await salt_connector.run_job_sync(
+            tgt=message.tgt,
+            tgt_type=message.tgt_type,
+            fun=message.fun,
+            arg=message.arg,
+            kwarg=message.kwarg,
+            jid=message.jid,
+        )
+
+        jid: str = next(iter(job_result.values()), {}).get('jid', '')
+
+        result = JobSyncOutMessage(
+            **message.model_dump(exclude={'jid'}),
+            jid=jid,
+            returns={minion_id: JobReturn(**job_return) for minion_id, job_return in job_result.items()},
+        )
+        result.fill_checksum()
+
+        logger.info('Created job: %s', result)
+        return result
     except CreateJobError as error:
         logger.error(error)
 

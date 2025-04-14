@@ -8,6 +8,15 @@ class NewJobIneMessage(BaseInMessage):
     hash_name: str
 
 
+class NewJobSyncIneMessage(BaseInMessage):
+    tgt: str
+    tgt_type: SaltTgtType
+    fun: str
+    arg: list
+    kwarg: dict
+    jid: str | None = None
+
+
 class GatherMinionsInMessage(BaseInMessage):
     tgt: str
     tgt_type: SaltTgtType

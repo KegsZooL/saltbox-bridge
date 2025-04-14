@@ -64,6 +64,12 @@ class SaltConnector:
 
         return jobs_jid
 
-    async def gather_minions(self, tgt: str, tgt_type: str) -> list[str]:
+    async def run_job_sync(
+        self, tgt: str, tgt_type: SaltTgtType, fun: str, arg: list, kwarg: dict, jid: str | None
+    ) -> dict[str, dict]:
+        return self.salt_client.cmd(
+            tgt=tgt, tgt_type=tgt_type, fun=fun, arg=arg, kwarg=kwarg, jid=jid, full_return=True
+        )
+
     async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> list[str]:
         return self.salt_client.gather_minions(tgt, tgt_type)

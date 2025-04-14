@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from redis import asyncio as aioredis
 
 from salt_box_bridge_service.config import SETTINGS
