@@ -1,6 +1,6 @@
 [project]
 dynamic = [ 'dependencies', 'version' ]
-name = 'salt-box-bridge-service'
+name = 'saltbox-bridge-service'
 requires-python = '>=3.10'
 license = { 'text' = 'N/A' }  # FIXME
 description = 'salt.box connector to salt master, service module'
@@ -12,7 +12,7 @@ classifiers = [
 [project.scripts]
 
 [metadata]
-url = 'https://dev.altlab.su/salt.box'
+url = 'https://dev.saltbox.pro/salt.box'
 version = 'attr: package.__version__'
 
 [build-system]
