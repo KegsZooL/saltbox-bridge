@@ -46,7 +46,7 @@ EXPOSE 4505 4506 8000
 
 
 FROM salt-master-base AS salt-master
-LABEL name='salt-box-salt-master'
+LABEL name='saltbox-salt-master'
 LABEL version='2.0'
 LABEL release='1'
 RUN \
@@ -57,7 +57,7 @@ RUN \
 
 
 FROM salt-master-base AS salt-master-dev
-LABEL name='salt-box-salt-master-dev'
+LABEL name='saltbox-salt-master-dev'
 LABEL version='0.2'
 LABEL release='1'
 ENV SALT_BOX_BRIDGE_SERVICE_SRC_PATH=/root/salt_box_bridge_service/
@@ -69,7 +69,7 @@ RUN \
 
 
 FROM salt-base AS salt-moc-minion
-LABEL name='salt-box-salt-minion'
+LABEL name='saltbox-salt-minion'
 LABEL version='0.8'
 RUN mkdir --parents /etc/salt/minion.d/
 COPY --chmod=755 minion/minion_entrypoint.sh /usr/local/bin/

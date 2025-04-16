@@ -1,7 +1,7 @@
 ---
 
 include:
-  - project: 'salt.box/ci-lib'
+  - project: 'saltbox/ci-lib'
     file: 'build-image.yml'
 
 

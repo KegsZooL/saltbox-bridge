@@ -8,11 +8,11 @@ Currently supported salt-master versions:
 - 3006.9
 
 ## Manual installation
-0. Get Redis root certificate with command inside `salt-box-compose`:
+0. Get Redis root certificate with command inside `saltbox-compose`:
   ```bash
   sudo docker compose cp redis-salt:/etc/redis/certs/ca.crt ./redis-ca.crt
   ```
-1. Copy `salt-box-bridge` files and the `redis-ca.crt` to Salt master you want to connect.
+1. Copy `saltbox-bridge` files and the `redis-ca.crt` to Salt master you want to connect.
 2. Put `*.py` files from [`engines/`](./engines/) to Salt engines dir e.g.
   `/srv/salt_extmod/engines/`. 
 3. Put  `*.py` files from [`runners/`](./runners/) to Salt runner modules dir
@@ -71,9 +71,9 @@ Put `.env` file to `/etc/salt/salt_box.d/`:
 
 # Redis conf:
 
-## REDIS_HOST is host with deployted salt-box-compose
+## REDIS_HOST is host with deployed saltbox-compose
 REDIS_HOST="REDIS_HOST"
-## REDIS_USERNAME is REDIS_SALT_USERNAME from salt-box-compose `.env` file
+## REDIS_USERNAME is REDIS_SALT_USERNAME from saltbox-compose `.env` file
 REDIS_USERNAME="REDIS_USERNAME"
 ## REDIS_PASSWORD is in `secrets/redis_salt_password`
 REDIS_PASSWORD="REDIS_PASSWORD"
