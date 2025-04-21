@@ -22,4 +22,9 @@ class GatherMinionsInMessage(BaseInMessage):
     tgt_type: SaltTgtType
 
 
+class UpdatePillarCacheInMessage(BaseInMessage):
+    tgt: str
+    tgt_type: SaltTgtType
+
+
 class PingInMessage(BaseInMessage): ...

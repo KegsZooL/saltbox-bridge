@@ -42,6 +42,7 @@ COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
+COPY pillar /srv/salt_extmod/pillar/
 ENV REDIS_USERNAME=redis
 ENV REDIS_PASSWORD_FILE=
 ENV MASTER_SECRET_FILE=

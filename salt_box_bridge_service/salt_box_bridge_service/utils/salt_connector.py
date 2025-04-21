@@ -73,3 +73,6 @@ class SaltConnector:
 
     async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> list[str]:
         return self.salt_client.gather_minions(tgt, tgt_type)
+
+    async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict]:
+        return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun='saltutil.refresh_pillar')

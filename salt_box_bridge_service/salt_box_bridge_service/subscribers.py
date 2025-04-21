@@ -12,7 +12,12 @@ from faststream.utils.context.repository import context
 
 from salt_box_bridge_service.exceptions import CreateJobError
 from salt_box_bridge_service.schemas.base_schemas import BaseInAbstractMessage
-from salt_box_bridge_service.schemas.in_schemas import GatherMinionsInMessage, NewJobIneMessage, NewJobSyncIneMessage
+from salt_box_bridge_service.schemas.in_schemas import (
+    GatherMinionsInMessage,
+    NewJobIneMessage,
+    NewJobSyncIneMessage,
+    UpdatePillarCacheInMessage,
+)
 from salt_box_bridge_service.schemas.out_schemas import GatherMinionsOutMessage, JobReturn, JobSyncOutMessage, Minion
 from salt_box_bridge_service.utils.salt_connector import SaltConnector
 
@@ -101,3 +106,11 @@ async def gather_minions(
     result.fill_checksum()
 
     return result
+
+
+@router.subscriber('update_pillar_cache')
+async def update_pillar_cache(
+    message: UpdatePillarCacheInMessage,
+    salt_connector: SaltConnector = Context(),  # noqa: B008
+) -> Any:
+    return await salt_connector.update_pillar_cache(tgt=message.tgt, tgt_type=message.tgt_type)

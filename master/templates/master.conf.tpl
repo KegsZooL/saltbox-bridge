@@ -16,6 +16,9 @@ engines:
       salt_box_env_file: '/etc/salt/salt_box.d/.env'
   - salt_box_service:
       salt_box_env_file: '/etc/salt/salt_box.d/.env'
+ext_pillar:
+  - redis_pillar:
+      salt_box_env_file: '/etc/salt/salt_box.d/.env'
 schedule:
   salt_box_redis_bridge_cleanup:
     hours: 3
