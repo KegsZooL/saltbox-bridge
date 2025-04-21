@@ -29,25 +29,32 @@ EOF
 FROM salt-base AS salt-master-base
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
   apk add gettext-envsubst
+ARG SUPERVISORD_VERSION='4.2.5'
+RUN \
+  --mount=type=bind,target=/mnt/,readwrite \
+  --mount=type=cache,target=/root/.cache/pip/ \
+  pip3 install "supervisor==${SUPERVISORD_VERSION}"
 # To avoid error messag on cleanup keys
 RUN mkdir --parents /var/cache/salt/master/
+COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
+COPY master/supervisord.conf /etc/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
-COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
 ENV REDIS_USERNAME=redis
 ENV REDIS_PASSWORD_FILE=
 ENV MASTER_SECRET_FILE=
 ENV SALT_MASTER_LOG_LEVEL=warning
+ENV SALT_MINION_LOG_LEVEL=warning
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["salt-master"]
+CMD ["/usr/local/bin/supervisord", "--config", "/etc/supervisord.conf"]
 EXPOSE 4505 4506 8000
 
 
 FROM salt-master-base AS salt-master
 LABEL name='saltbox-salt-master'
-LABEL version='2.0'
+LABEL version='3.0'
 LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
@@ -58,7 +65,7 @@ RUN \
 
 FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
-LABEL version='0.2'
+LABEL version='2.0'
 LABEL release='1'
 ENV SALT_BOX_BRIDGE_SERVICE_SRC_PATH=/root/salt_box_bridge_service/
 ENV SALT_BOX_DEV_MODE=1
@@ -70,13 +77,13 @@ RUN \
 
 FROM salt-base AS salt-moc-minion
 LABEL name='saltbox-salt-minion'
-LABEL version='0.8'
+LABEL version='0.9'
 RUN mkdir --parents /etc/salt/minion.d/
 COPY --chmod=755 minion/minion_entrypoint.sh /usr/local/bin/
 ENV SALT_MASTER=salt-master
 ENV MINION_ID_PREFIX=moc-minion
-ENV SALT_MINION_LOG_LEVEL=warning
+ENV SALT_MOC_MINION_LOG_LEVEL=warning
 # How often to rentry on master hostname lookup error (sec)
-ENV SALT_MINION_RETRY_DNS=30
+ENV SALT_MOC_MINION_RETRY_DNS=30
 ENTRYPOINT ["/usr/local/bin/minion_entrypoint.sh"]
 CMD ["/usr/local/bin/salt-minion"]

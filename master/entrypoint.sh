@@ -25,14 +25,17 @@ MASTER_SECRET="$(cat "$MASTER_SECRET_FILE")"
 export MASTER_SECRET
 
 mkdir --parents /etc/salt/master.d/
-envsubst '$SALT_MASTER_LOG_LEVEL $REDIS_USERNAME $REDIS_PASSWORD $MASTER_SECRET' \
+envsubst '$SALT_MASTER_LOG_LEVEL' \
   < /root/templates/master.conf.tpl \
   > /etc/salt/master.d/master.conf
 
+envsubst '$SALT_MINION_LOG_LEVEL' \
+  < /root/templates/minion.conf.tpl \
+  > /etc/salt/minion
 
 mkdir --parents /etc/salt/salt_box.d/
-envsubst '$SALT_MASTER_LOG_LEVEL $REDIS_USERNAME $REDIS_PASSWORD $MASTER_SECRET' \
-  < /root/templates/.env.tpl \
+envsubst '$REDIS_USERNAME $REDIS_PASSWORD $MASTER_SECRET' \
+  < /root/templates/env.tpl \
   > /etc/salt/salt_box.d/.env
 
 exec "$@"

@@ -16,9 +16,9 @@ fi
 
 cat << EOF > /etc/salt/minion
 master: '${SALT_MASTER}'
-log_level: ${SALT_MINION_LOG_LEVEL}
+log_level: '${SALT_MOC_MINION_LOG_LEVEL}'
 master_tries: -1  # Prevents exception on unanswered master IP
-retry_dns: ${SALT_MINION_RETRY_DNS}
+retry_dns: ${SALT_MOC_MINION_RETRY_DNS}
 EOF
 
 exec "$@"
