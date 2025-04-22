@@ -1,3 +1,11 @@
+# Copyright 2025 Anton Karmanov
+
+# Licensed under the Apache License, Version 2.0.
+# See LICENSE.txt file in the project root for license information.
+
+# This file is a part of Salt.Box system.
+
+
 ARG ALPINE_VERSION='3.20'
 # Current 3.10 == 3.10.17 seems broken for now 2025-04-09
 ARG PYTHON_VERSION='3.10.16'
