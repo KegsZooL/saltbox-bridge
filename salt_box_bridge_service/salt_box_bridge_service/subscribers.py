@@ -10,6 +10,7 @@ from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 from faststream.utils.context.repository import context
 
+from salt_box_bridge_service.config import SETTINGS
 from salt_box_bridge_service.exceptions import CreateJobError
 from salt_box_bridge_service.schemas.base_schemas import BaseInAbstractMessage
 from salt_box_bridge_service.schemas.in_schemas import (
@@ -32,12 +33,13 @@ class MastersAuthMiddleware(BaseMiddleware):
         salt_master: str = context.get('salt_master')
 
         if message.master and message.master != salt_master:
-            return
+            return None
 
         if message.check_checksum():
             return await super().consume_scope(call_next, msg)
         else:
             LOGGER.error('Checksum failed')
+            return None
 
 
 router = RedisRouter(prefix='master_', middlewares=[MastersAuthMiddleware])
@@ -57,6 +59,7 @@ async def run_job(
         return jid
     except CreateJobError as error:
         logger.error(error)
+        return None
 
 
 @router.subscriber('run_job_sync')
@@ -88,6 +91,7 @@ async def run_job_sync(
         return result
     except CreateJobError as error:
         logger.error(error)
+        return None
 
 
 @router.subscriber('gather_minions')
@@ -100,7 +104,9 @@ async def gather_minions(
 
     result = GatherMinionsOutMessage(
         count=len(minions),
-        minions=[Minion(minion_id=minion, master=salt_master) for minion in minions[:100]],
+        minions=[
+            Minion(minion_id=minion, master=salt_master) for minion in minions[: SETTINGS.max_count_of_gather_minions]
+        ],
         master=salt_master,
     )
     result.fill_checksum()

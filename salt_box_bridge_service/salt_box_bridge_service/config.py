@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # Salt box
     expire: int | None = Field(alias='EXPIRE', default=604800)
     master_secret: str = Field(alias='MASTER_SECRET')
+    max_count_of_gather_minions: int = Field(alias='MAX_COUNT_OF_GATHER_MINIONS', default=100)
 
     model_config = SettingsConfigDict(env_file='/etc/salt/salt_box.conf')
 
