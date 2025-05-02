@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from salt_box_bridge_service.config import SETTINGS
 from salt_box_bridge_service.redis import get_redis_client
 
 __opts__: dict
@@ -17,12 +16,8 @@ def __virtual__() -> bool | tuple[bool, str]:  # noqa: N807
     return True
 
 
-async def async_ext_pillar(minion_id, pillar, **kw) -> dict:
+async def async_ext_pillar(minion_id, pillar, *args, **kwargs) -> dict:
     master_id: str = __opts__['salt_box_master_id']  # noqa: F821
-
-    # Update settings
-    salt_box_env_file: str = kw.get('salt_box_env_file')
-    SETTINGS.__init__(_env_file=salt_box_env_file)
 
     redis_client = get_redis_client()
 
@@ -32,5 +27,5 @@ async def async_ext_pillar(minion_id, pillar, **kw) -> dict:
     return pillars
 
 
-def ext_pillar(minion_id, pillar, **kw):
-    return asyncio.run(async_ext_pillar(minion_id, pillar, **kw))
+def ext_pillar(minion_id, pillar, *args, **kwargs):
+    return asyncio.run(async_ext_pillar(minion_id, pillar, *args, **kwargs))

@@ -1,4 +1,4 @@
-# Salt.box .env
+# Salt.box conf
 
 # Redis conf:
 REDIS_HOST='redis-salt'

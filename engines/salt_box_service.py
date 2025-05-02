@@ -16,9 +16,7 @@
 from __future__ import annotations
 
 import logging
-import os
 
-from salt_box_bridge_service.config import SETTINGS
 from salt_box_bridge_service.service import start as start_service
 
 __opts__: dict
@@ -33,16 +31,10 @@ def __virtual__() -> bool | tuple[bool, str]:  # noqa: N807
     return True
 
 
-def start(salt_box_env_file: str):
+def start():
     """
     Start a salt.box service.
-
-    Args:
-        salt_box_env_file: path to salt.box env file
     """
-
-    os.environ['SALT_BOX_ENV_FILE'] = salt_box_env_file
-    SETTINGS.__init__(_env_file=salt_box_env_file)
 
     LOGGER.info('Starting salt.box service as an engine')
     start_service(salt_opts=__opts__)  # noqa: F821

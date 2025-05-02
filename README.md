@@ -48,11 +48,9 @@ presence_events: True
 ## Set real values
 engines:
   - salt_box_redis_bridge:
-      # Path to .env file
-      salt_box_env_file: '/etc/salt/salt_box.d/.env'
   - salt_box_service:
-      # Path to .env file
-      salt_box_env_file: '/etc/salt/salt_box.d/.env'
+ext_pillar:
+  - redis_pillar:
 
 ## Strictly recommended to cleanup historical data
 schedule:
@@ -65,9 +63,9 @@ schedule:
       redis_host: redis-salt
 ```
 
-Put `.env` file to `/etc/salt/salt_box.d/`:
+Put `salt_box.conf` file to `/etc/salt/`:
 ```
-# /etc/salt/salt_box.d/.env
+# /etc/salt/salt_box.conf
 
 # Redis conf:
 

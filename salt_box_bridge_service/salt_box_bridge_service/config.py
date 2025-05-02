@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -39,7 +37,7 @@ class Settings(BaseSettings):
     expire: int | None = Field(alias='EXPIRE', default=604800)
     master_secret: str = Field(alias='MASTER_SECRET')
 
-    model_config = SettingsConfigDict(env_file=os.getenv('SALT_BOX_ENV_FILE', '/etc/salt/salt_box.d/.env'))
+    model_config = SettingsConfigDict(env_file='/etc/salt/salt_box.conf')
 
     @property
     def redis_protocol(self) -> str:

@@ -13,9 +13,7 @@ log_level_logfile: 'quiet'
 presence_events: True
 engines:
   - salt_box_redis_bridge:
-      salt_box_env_file: '/etc/salt/salt_box.d/.env'
   - salt_box_service:
-      salt_box_env_file: '/etc/salt/salt_box.d/.env'
 ext_pillar:
   - redis_pillar:
       salt_box_env_file: '/etc/salt/salt_box.d/.env'
