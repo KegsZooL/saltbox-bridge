@@ -47,16 +47,16 @@ presence_events: True
 
 ## Set real values
 engines:
-  - salt_box_redis_bridge:
-  - salt_box_service:
+  - saltbox_delator:
+  - saltbox_agent:
 ext_pillar:
   - redis_pillar:
 
 ## Strictly recommended to cleanup historical data
 schedule:
-  salt_box_redis_bridge_cleanup:
+  saltbox_delator_cleanup:
     hours: 3
-    function: salt_box_redis_bridge.cleanup_expired_jobs
+    function: saltbox_delator.cleanup_expired_jobs
     kwargs:
       # Age of jobs to delete (sec)
       expire: 604800

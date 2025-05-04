@@ -1,5 +1,5 @@
 """
-FastMS engines.salt_box_redis_bridge related functions
+FastMS engines.saltbox_delator related functions
 """
 
 from datetime import datetime, timedelta, timezone
@@ -32,7 +32,7 @@ def cleanup_expired_jobs(expire: int, redis_host='localhost', port=6379, db=0) -
 
     .. code-block:: bash
 
-        salt-run salt_box_redis_bridge.cleanup_expired_jobs 3600 redis_host=redis-host
+        salt-run saltbox_delator.cleanup_expired_jobs 3600 redis_host=redis-host
     """
     redis_client = redis.Redis(host=redis_host, port=port, db=db)
     expiration_time = (datetime.now(tz=timezone.utc) - timedelta(seconds=expire)).timestamp()

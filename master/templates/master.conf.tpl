@@ -12,15 +12,15 @@ log_level: '${SALT_MASTER_LOG_LEVEL}'
 log_level_logfile: 'quiet'
 presence_events: True
 engines:
-  - salt_box_redis_bridge:
-  - salt_box_service:
+  - saltbox_delator:
+  - saltbox_agent:
 ext_pillar:
   - redis_pillar:
       salt_box_env_file: '/etc/salt/salt_box.d/.env'
 schedule:
-  salt_box_redis_bridge_cleanup:
+  saltbox_delator_cleanup:
     hours: 3
-    function: salt_box_redis_bridge.cleanup_expired_jobs
+    function: saltbox_delator.cleanup_expired_jobs
     kwargs:
       # Age of jobs to delete (sec)
       expire: 604800
