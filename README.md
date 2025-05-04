@@ -63,9 +63,9 @@ schedule:
       redis_host: redis-salt
 ```
 
-Put `salt_box.conf` file to `/etc/salt/`:
+Put `saltbox.conf` file to `/etc/salt/`:
 ```
-# /etc/salt/salt_box.conf
+# /etc/salt/saltbox.conf
 
 # Redis conf:
 

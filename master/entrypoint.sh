@@ -34,7 +34,7 @@ envsubst '$SALT_MINION_LOG_LEVEL' \
   > /etc/salt/minion
 
 envsubst '$REDIS_USERNAME $REDIS_PASSWORD $MASTER_SECRET' \
-  < /root/templates/salt_box.conf.tpl \
-  > /etc/salt/salt_box.conf
+  < /root/templates/saltbox.conf.tpl \
+  > /etc/salt/saltbox.conf
 
 exec "$@"
