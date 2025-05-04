@@ -36,7 +36,7 @@ EOF
 
 FROM salt-base AS salt-master-base
 RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
-  apk add gettext-envsubst
+  apk add gettext-envsubst openssh-keygen
 ARG SUPERVISORD_VERSION='4.2.5'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \

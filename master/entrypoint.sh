@@ -8,6 +8,16 @@ error() {
   exit 1
 }
 
+ssh_keyfile='/root/.ssh/saltbox_ed25519'
+
+# TODO Create with highstate instead
+if [ ! -f "$ssh_keyfile" ]; then
+  ssh_key_dir=$(dirname "$ssh_keyfile")
+  mkdir -p "$ssh_key_dir"
+  chmod 700 "$ssh_key_dir"
+  ssh-keygen -t ed25519 -N '' -f "$ssh_keyfile"
+fi
+
 if [ "$SALT_BOX_DEV_MODE" = 1 ]; then
   # Update install
   chown -R "$(id -u):$(id -g)" "$SALTBOX_BRIDGE_SRC_PATH"
