@@ -17,9 +17,9 @@ Currently supported salt-master versions:
   `/srv/salt_extmod/engines/`. 
 3. Put  `*.py` files from [`runners/`](./runners/) to Salt runner modules dir
    e.g. `/srv/salt_extmod/runners/`.
-4. Install the [`salt_box_bridge_service`](./salt\_box\_bridge\_service/) module:
+4. Install the [`saltbox_bridge`](./salt\_box\_bridge\_service/) module:
   ```bash
-  sudo pip3 install `./salt_box_bridge_service/`
+  sudo pip3 install `./saltbox_bridge/`
   ```
 5. Put `redis-ca.crt` from the first step e.g. to `/etc/salt/ssl/`
 

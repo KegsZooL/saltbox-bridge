@@ -4,8 +4,8 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, PositiveInt
 
-from salt_box_bridge_service.schemas.base_schemas import BaseOutMessage
-from salt_box_bridge_service.utils.types import SaltTgtType
+from saltbox_bridge.schemas.base_schemas import BaseOutMessage
+from saltbox_bridge.utils.types import SaltTgtType
 
 
 class Minion(BaseModel):

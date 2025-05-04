@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from salt_box_bridge_service.redis import get_redis_client
+from saltbox_bridge.redis import get_redis_client
 
 __opts__: dict
 

@@ -6,9 +6,9 @@ from typing import Any
 
 from salt.utils import json
 
-from salt_box_bridge_service.exceptions import StopProcessing
-from salt_box_bridge_service.salt_handlers.base_handler import BaseMessageHandler
-from salt_box_bridge_service.utils.jid import jid_to_epoch
+from saltbox_bridge.exceptions import StopProcessing
+from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler
+from saltbox_bridge.utils.jid import jid_to_epoch
 
 LOGGER = logging.getLogger(__name__)
 

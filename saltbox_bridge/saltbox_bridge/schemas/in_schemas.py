@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from salt_box_bridge_service.schemas.base_schemas import BaseInMessage
-from salt_box_bridge_service.utils.types import SaltTgtType
+from saltbox_bridge.schemas.base_schemas import BaseInMessage
+from saltbox_bridge.utils.types import SaltTgtType
 
 
 class NewJobIneMessage(BaseInMessage):

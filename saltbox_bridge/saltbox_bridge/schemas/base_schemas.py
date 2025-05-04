@@ -4,7 +4,7 @@ import hashlib
 
 from pydantic import BaseModel, ConfigDict
 
-from salt_box_bridge_service.config import SETTINGS
+from saltbox_bridge.config import SETTINGS
 
 
 class AuthMessage(BaseModel):

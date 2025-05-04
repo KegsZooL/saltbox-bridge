@@ -8,8 +8,8 @@ from redis.asyncio import Redis
 from salt.client import LocalClient
 from salt.exceptions import SaltException
 
-from salt_box_bridge_service.exceptions import CreateJobError
-from salt_box_bridge_service.utils.types import SaltTgtType
+from saltbox_bridge.exceptions import CreateJobError
+from saltbox_bridge.utils.types import SaltTgtType
 
 LOGGER = logging.getLogger(__name__)
 

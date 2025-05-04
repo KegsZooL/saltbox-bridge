@@ -21,7 +21,7 @@ Salt master config:
                            # better not to mix with /srv/salt/
 
     engines:
-      - salt_box_redis_bridge:  # start() args following
+      - saltbox_redis_bridge:  # start() args following
           host: localhost  # Redis instance
 
 Put the module to /srv/salt_extmod/engines/
@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import logging
 
-from salt_box_bridge_service.bridge import start as start_bridge
+from saltbox_bridge.bridge import start as start_bridge
 
 __opts__: dict
 __salt__: dict

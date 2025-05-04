@@ -68,7 +68,7 @@ LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
   --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install /mnt/salt_box_bridge_service/
+  pip3 install /mnt/saltbox_bridge/
 
 
 
@@ -76,7 +76,7 @@ FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
 LABEL version='2.0'
 LABEL release='1'
-ENV SALT_BOX_BRIDGE_SERVICE_SRC_PATH=/root/salt_box_bridge_service/
+ENV SALT_BOX_BRIDGE_SERVICE_SRC_PATH=/root/saltbox_bridge/
 ENV SALT_BOX_DEV_MODE=1
 COPY salt_box_bridge_service/ $SALT_BOX_BRIDGE_SERVICE_SRC_PATH
 RUN \

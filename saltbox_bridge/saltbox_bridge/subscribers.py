@@ -10,17 +10,17 @@ from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 from faststream.utils.context.repository import context
 
-from salt_box_bridge_service.config import SETTINGS
-from salt_box_bridge_service.exceptions import CreateJobError
-from salt_box_bridge_service.schemas.base_schemas import BaseInAbstractMessage
-from salt_box_bridge_service.schemas.in_schemas import (
+from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.exceptions import CreateJobError
+from saltbox_bridge.schemas.base_schemas import BaseInAbstractMessage
+from saltbox_bridge.schemas.in_schemas import (
     GatherMinionsInMessage,
     NewJobIneMessage,
     NewJobSyncIneMessage,
     UpdatePillarCacheInMessage,
 )
-from salt_box_bridge_service.schemas.out_schemas import GatherMinionsOutMessage, JobReturn, JobSyncOutMessage, Minion
-from salt_box_bridge_service.utils.salt_connector import SaltConnector
+from saltbox_bridge.schemas.out_schemas import GatherMinionsOutMessage, JobReturn, JobSyncOutMessage, Minion
+from saltbox_bridge.utils.salt_connector import SaltConnector
 
 LOGGER = logging.getLogger(__name__)
 Message = Annotated[RedisMessage, Context()]

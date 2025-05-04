@@ -24,12 +24,12 @@ from contextlib import asynccontextmanager
 import salt.config
 from faststream import ContextRepo
 
-from salt_box_bridge_service.config import SETTINGS
-from salt_box_bridge_service.faststream_redis import get_faststream_app
-from salt_box_bridge_service.redis import get_redis_client
-from salt_box_bridge_service.schemas.base_schemas import AuthMessage
-from salt_box_bridge_service.subscribers import router
-from salt_box_bridge_service.utils.salt_connector import SaltConnector
+from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.faststream_redis import get_faststream_app
+from saltbox_bridge.redis import get_redis_client
+from saltbox_bridge.schemas.base_schemas import AuthMessage
+from saltbox_bridge.subscribers import router
+from saltbox_bridge.utils.salt_connector import SaltConnector
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 

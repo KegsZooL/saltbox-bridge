@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 
-from salt_box_bridge_service.service import start as start_service
+from saltbox_bridge.service import start as start_service
 
 __opts__: dict
 __salt__: dict

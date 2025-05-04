@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from salt_box_bridge_service.utils.types import SslCertReqs
+from saltbox_bridge.utils.types import SslCertReqs
 
 
 class FaststreamRedisConf:

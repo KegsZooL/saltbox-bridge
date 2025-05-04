@@ -8,8 +8,8 @@ import redis.asyncio as redis
 from faststream.redis import RedisBroker
 from salt.client import LocalClient
 
-from salt_box_bridge_service.config import SETTINGS
-from salt_box_bridge_service.schemas.base_schemas import BaseOutMessage
+from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.schemas.base_schemas import BaseOutMessage
 
 
 class BaseMessageHandler(abc.ABC):

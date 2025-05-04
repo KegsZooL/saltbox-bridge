@@ -5,17 +5,17 @@ import logging
 
 from salt.utils.event import get_master_event
 
-from salt_box_bridge_service.config import SETTINGS
-from salt_box_bridge_service.exceptions import StopProcessing
-from salt_box_bridge_service.faststream_redis import get_faststream_broker
-from salt_box_bridge_service.redis import get_redis_client
-from salt_box_bridge_service.salt_handlers.job_return_handler import (
+from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.exceptions import StopProcessing
+from saltbox_bridge.faststream_redis import get_faststream_broker
+from saltbox_bridge.redis import get_redis_client
+from saltbox_bridge.salt_handlers.job_return_handler import (
     JobReturnForTaskMessageHandler,
     JobReturnMessageHandler,
 )
-from salt_box_bridge_service.salt_handlers.minion_started_handler import MinionStartedMessageHandler
-from salt_box_bridge_service.salt_handlers.new_job_handler import JobNewForTaskMessageHandler, JobNewMessageHandler
-from salt_box_bridge_service.salt_handlers.presence_handler import PresenceMessageHandler
+from saltbox_bridge.salt_handlers.minion_started_handler import MinionStartedMessageHandler
+from saltbox_bridge.salt_handlers.new_job_handler import JobNewForTaskMessageHandler, JobNewMessageHandler
+from saltbox_bridge.salt_handlers.presence_handler import PresenceMessageHandler
 
 LOGGER = logging.getLogger(__name__)
 

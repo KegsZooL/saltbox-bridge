@@ -10,7 +10,7 @@ from faststream.redis.publisher.asyncapi import AsyncAPIPublisher
 from faststream.redis.subscriber.asyncapi import AsyncAPISubscriber
 from faststream.security import SASLPlaintext
 
-from salt_box_bridge_service.config import SETTINGS, FaststreamRedisConf
+from saltbox_bridge.config import SETTINGS, FaststreamRedisConf
 
 
 def get_faststream_broker(

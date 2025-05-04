@@ -4,9 +4,9 @@ import re
 from datetime import datetime
 from typing import Any
 
-from salt_box_bridge_service.exceptions import StopProcessing
-from salt_box_bridge_service.salt_handlers.base_handler import BaseMessageHandler
-from salt_box_bridge_service.schemas.out_schemas import PresenceOutMessage
+from saltbox_bridge.exceptions import StopProcessing
+from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler
+from saltbox_bridge.schemas.out_schemas import PresenceOutMessage
 
 
 class PresenceMessageHandler(BaseMessageHandler):
