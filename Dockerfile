@@ -76,12 +76,12 @@ FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
 LABEL version='2.0'
 LABEL release='1'
-ENV SALT_BOX_BRIDGE_SERVICE_SRC_PATH=/root/saltbox_bridge/
+ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
 ENV SALT_BOX_DEV_MODE=1
-COPY salt_box_bridge_service/ $SALT_BOX_BRIDGE_SERVICE_SRC_PATH
+COPY saltbox_bridge/ $SALTBOX_BRIDGE_SRC_PATH
 RUN \
   --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install --editable "$SALT_BOX_BRIDGE_SERVICE_SRC_PATH"
+  pip3 install --editable "$SALTBOX_BRIDGE_SRC_PATH"
 
 
 FROM salt-base AS salt-moc-minion

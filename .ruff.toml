@@ -1,6 +1,6 @@
 target-version = 'py310'
 line-length = 120
-src = ['engines', 'runners', 'salt_box_bridge_service']
+src = ['engines', 'runners', 'saltbox_bridge']
 extend-exclude = ['docs', 'env', '__pycache__', '*.egg', 'htmlcov']
 respect-gitignore = true
 unsafe-fixes = false
@@ -60,7 +60,7 @@ convention = 'google'
 known-first-party = [
   'engines',
   'runners',
-  'salt_box_bridge_service'
+  'saltbox_bridge'
 ]
 
 [lint.mccabe]

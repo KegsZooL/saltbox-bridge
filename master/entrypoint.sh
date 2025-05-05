@@ -10,8 +10,8 @@ error() {
 
 if [ "$SALT_BOX_DEV_MODE" = 1 ]; then
   # Update install
-  chown -R "$(id -u):$(id -g)" "$SALT_BOX_BRIDGE_SERVICE_SRC_PATH"
-  pip3 install --editable "$SALT_BOX_BRIDGE_SERVICE_SRC_PATH"
+  chown -R "$(id -u):$(id -g)" "$SALTBOX_BRIDGE_SRC_PATH"
+  pip3 install --editable "$SALTBOX_BRIDGE_SRC_PATH"
 fi
 
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
