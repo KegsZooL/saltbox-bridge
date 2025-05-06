@@ -29,8 +29,7 @@ class UpdatePillarCacheInMessage(BaseInMessage):
     tgt_type: SaltTgtType
 
 
-class PingInMessage(BaseInMessage):
-    ...
+class PingInMessage(BaseInMessage): ...
 
 
 class SlsRepo(BaseModel):

@@ -28,5 +28,5 @@ version = { attr = 'saltbox_bridge.__version__' }
 
 [tool.flake8]  # Requires Flake8-pyproject
 max-line-length = 120
-extend-ignore = [ ]
+extend-ignore = [ 'E701' ]
 builtins = [ '__opts__', '__salt__' ]
