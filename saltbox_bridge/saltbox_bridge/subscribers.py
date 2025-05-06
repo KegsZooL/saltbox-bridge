@@ -15,6 +15,7 @@ from saltbox_bridge.exceptions import CreateJobError
 from saltbox_bridge.schemas.base_schemas import BaseInAbstractMessage
 from saltbox_bridge.schemas.in_schemas import (
     GatherMinionsInMessage,
+    ListSlsReposMessage,
     NewJobIneMessage,
     NewJobSyncIneMessage,
     UpdatePillarCacheInMessage,
@@ -120,3 +121,14 @@ async def update_pillar_cache(
     salt_connector: SaltConnector = Context(),  # noqa: B008
 ) -> Any:
     return await salt_connector.update_pillar_cache(tgt=message.tgt, tgt_type=message.tgt_type)
+
+
+@router.subscriber('sync_repos')
+async def sync_repos(
+    message: ListSlsReposMessage,
+    salt_connector: SaltConnector = Context(),
+) -> Any:
+    # TODO True async?
+    # TODO Setup gitfs
+    # TODO rsync files
+    ...
