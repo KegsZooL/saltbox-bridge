@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 
@@ -21,7 +22,7 @@ from saltbox_bridge.schemas.in_schemas import (
     UpdatePillarCacheInMessage,
 )
 from saltbox_bridge.schemas.out_schemas import GatherMinionsOutMessage, JobReturn, JobSyncOutMessage, Minion
-from saltbox_bridge.utils.salt_connector import SaltConnector
+from saltbox_bridge.utils.salt_connector import SaltConnector, get_salt_caller
 
 LOGGER = logging.getLogger(__name__)
 Message = Annotated[RedisMessage, Context()]
@@ -131,4 +132,9 @@ async def sync_repos(
     # TODO True async?
     # TODO Setup gitfs
     # TODO rsync files
-    ...
+    # TODO lock file
+    # TODO Notify Salt.Box Core
+
+    caller = get_salt_caller()
+    repos = [r.dict() for r in message.repos]
+    _ret = caller.cmd('state.apply', 'sync_repos', out='yaml', pillar={'gitfs_repos': repos})

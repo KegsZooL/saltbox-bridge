@@ -1,5 +1,9 @@
 id: saltbox-main-minion
 master: localhost
+file_client: local
+file_roots:
+  base:
+    - '/srv/salt_local/'
 log_level: '${SALT_MINION_LOG_LEVEL}'
 master_tries: -1
 retry_dns: 5

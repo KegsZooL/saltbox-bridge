@@ -5,13 +5,21 @@ import logging
 from typing import cast
 
 from redis.asyncio import Redis
+from salt.client import Caller
 from salt.client import LocalClient
+from salt.config import minion_config
 from salt.exceptions import SaltException
 
 from saltbox_bridge.exceptions import CreateJobError
 from saltbox_bridge.utils.types import SaltTgtType
 
 LOGGER = logging.getLogger(__name__)
+
+
+def get_salt_caller() -> Caller:
+    opts = minion_config('/etc/salt/minion')
+    opts['file_client'] = 'local'
+    return Caller(mopts=opts)
 
 
 class SaltConnector:

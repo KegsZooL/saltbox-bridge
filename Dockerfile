@@ -48,6 +48,7 @@ COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
 COPY master/supervisord.conf /etc/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
+COPY master/states/ /srv/salt_local/
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
 COPY pillar /srv/salt_extmod/pillar/
