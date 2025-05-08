@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import Field
+from pathlib import Path
+
+from pydantic import Field, FilePath
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from saltbox_bridge.utils.types import SslCertReqs
@@ -32,6 +34,10 @@ class Settings(BaseSettings):
     redis_ssl_use: bool = Field(alias='REDIS_SSL_USE', default=True)
     redis_ssl_cert_reqs: SslCertReqs = Field(alias='REDIS_SSL_CERT_REQS', default='required')
     redis_ssl_ca_certs: str | None = Field(alias='REDIS_SSL_CA_CERTS', default=None)
+    gitfs_server: str
+    gitfs_port: int = 22
+    gitfs_privkey: FilePath = Path('/root/.ssh/saltbox_ed25519')
+    gitfs_pubkey: FilePath = Path('/root/.ssh/saltbox_ed25519.pub')
 
     # Salt box
     expire: int | None = Field(alias='EXPIRE', default=604800)

@@ -137,4 +137,12 @@ async def sync_repos(
 
     caller = get_salt_caller()
     repos = [r.dict() for r in message.repos]
-    _ret = caller.cmd('state.apply', 'sync_repos', out='yaml', pillar={'gitfs_repos': repos})
+    pillar = {
+        'gitfs_repos': repos,
+        'sshfs_server': SETTINGS.gitfs_server,
+        'sshfs_port': SETTINGS.gitfs_port,
+        'gitfs_privkey': SETTINGS.gitfs_privkey,
+        'gitfs_pubkey': SETTINGS.gitfs_pubkey,
+        'saltbox_env': 'saltbox',
+    }
+    _ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)

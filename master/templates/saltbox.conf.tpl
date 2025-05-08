@@ -1,4 +1,5 @@
-# Salt.box conf
+# Salt.Box config
+# File has env-file format.
 
 # Redis conf:
 REDIS_HOST='redis-salt'
@@ -11,3 +12,8 @@ REDIS_SSL_CA_CERTS='/etc/redis/certs/ca.crt'
 # Time to live for job returns and grains (sec)
 EXPIRE=604800
 MASTER_SECRET='${MASTER_SECRET}'
+
+GITFS_SERVER=sshfs
+GITFS_PORT=1022
+GITFS_PRIVKEY='/root/.ssh/saltbox_ed25519'
+GITFS_PUBKEY='/root/.ssh/saltbox_ed25519.pub'
