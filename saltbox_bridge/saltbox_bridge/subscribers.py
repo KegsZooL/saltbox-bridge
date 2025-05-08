@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 
 from collections.abc import Awaitable, Callable
@@ -145,4 +146,6 @@ async def sync_repos(
         'gitfs_pubkey': SETTINGS.gitfs_pubkey,
         'saltbox_env': 'saltbox',
     }
-    _ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)
+    ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)
+    # TODO Process errors
+    LOGGER.info('sync_repos return:\n%s', json.dumps(ret, indent=2))

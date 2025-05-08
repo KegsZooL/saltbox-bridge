@@ -36,8 +36,17 @@ class Settings(BaseSettings):
     redis_ssl_ca_certs: str | None = Field(alias='REDIS_SSL_CA_CERTS', default=None)
     gitfs_server: str
     gitfs_port: int = 22
+    gitfs_user: str = 'git'
     gitfs_privkey: FilePath = Path('/root/.ssh/saltbox_ed25519')
     gitfs_pubkey: FilePath = Path('/root/.ssh/saltbox_ed25519.pub')
+    sshfs_sync_on: bool = True
+    sshfs_server: str | None = None
+    sshfs_port: int = 22
+    sshfs_user: str | None = None
+    sshfs_privkey: FilePath = gitfs_privkey
+    sshfs_pubkey: FilePath = gitfs_pubkey
+    sshfs_source: str = '/srv/sshfs/'
+    sshfs_destination: str =  '/srv/sshfs/'
 
     # Salt box
     expire: int | None = Field(alias='EXPIRE', default=604800)

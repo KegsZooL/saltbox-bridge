@@ -17,3 +17,5 @@ GITFS_SERVER=sshfs
 GITFS_PORT=1022
 GITFS_PRIVKEY='/root/.ssh/saltbox_ed25519'
 GITFS_PUBKEY='/root/.ssh/saltbox_ed25519.pub'
+
+SSHFS_SYNC_ON=False  # Should be True for remote master
