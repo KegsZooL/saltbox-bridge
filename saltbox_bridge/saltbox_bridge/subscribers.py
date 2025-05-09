@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 
 from collections.abc import Awaitable, Callable
@@ -23,7 +22,7 @@ from saltbox_bridge.schemas.in_schemas import (
     UpdatePillarCacheInMessage,
 )
 from saltbox_bridge.schemas.out_schemas import GatherMinionsOutMessage, JobReturn, JobSyncOutMessage, Minion
-from saltbox_bridge.utils.salt_connector import SaltConnector, get_salt_caller
+from saltbox_bridge.utils.salt_connector import SaltConnector, get_salt_caller, get_state_apply_error
 
 LOGGER = logging.getLogger(__name__)
 Message = Annotated[RedisMessage, Context()]
@@ -148,5 +147,7 @@ async def sync_repos(
         'saltbox_env': 'saltbox',
     }
     ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)
-    # TODO Process errors
-    LOGGER.info('sync_repos return:\n%s', json.dumps(ret, indent=2))
+    LOGGER.info('End sync_repos')
+    if (errors := get_state_apply_error(ret)) is not None:
+        for msg in errors:
+            LOGGER.error(msg)
