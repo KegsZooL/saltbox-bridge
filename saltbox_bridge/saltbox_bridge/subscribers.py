@@ -140,10 +140,11 @@ async def sync_repos(
     repos = [r.dict() for r in message.repos]
     pillar = {
         'gitfs_repos': repos,
+        'var_dir': str(SETTINGS.var_dir),
         'sshfs_server': SETTINGS.gitfs_server,
         'sshfs_port': SETTINGS.gitfs_port,
-        'gitfs_privkey': SETTINGS.gitfs_privkey,
-        'gitfs_pubkey': SETTINGS.gitfs_pubkey,
+        'gitfs_privkey': str(SETTINGS.gitfs_privkey),
+        'gitfs_pubkey': str(SETTINGS.gitfs_pubkey),
         'saltbox_env': 'saltbox',
     }
     ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)

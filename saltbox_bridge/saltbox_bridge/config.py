@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field, FilePath
+from pydantic import DirectoryPath, Field, FilePath
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from saltbox_bridge.utils.types import SslCertReqs
@@ -34,19 +34,20 @@ class Settings(BaseSettings):
     redis_ssl_use: bool = Field(alias='REDIS_SSL_USE', default=True)
     redis_ssl_cert_reqs: SslCertReqs = Field(alias='REDIS_SSL_CERT_REQS', default='required')
     redis_ssl_ca_certs: str | None = Field(alias='REDIS_SSL_CA_CERTS', default=None)
+    var_dir: DirectoryPath = Path('/var/lib/saltbox/')
     gitfs_server: str
     gitfs_port: int = 22
     gitfs_user: str = 'git'
-    gitfs_privkey: FilePath = Path('/root/.ssh/saltbox_ed25519')
-    gitfs_pubkey: FilePath = Path('/root/.ssh/saltbox_ed25519.pub')
+    gitfs_privkey: FilePath = var_dir / 'ssh/saltbox_ed25519'
+    gitfs_pubkey: FilePath = var_dir / 'ssh/saltbox_ed25519.pub'
     sshfs_sync_on: bool = True
     sshfs_server: str | None = None
     sshfs_port: int = 22
     sshfs_user: str | None = None
     sshfs_privkey: FilePath = gitfs_privkey
     sshfs_pubkey: FilePath = gitfs_pubkey
-    sshfs_source: str = '/srv/sshfs/'
-    sshfs_destination: str =  '/srv/sshfs/'
+    sshfs_source: Path = Path('/srv/sshfs/')
+    sshfs_destination: Path = Path('/srv/sshfs/')
 
     # Salt box
     expire: int | None = Field(alias='EXPIRE', default=604800)
