@@ -1,4 +1,4 @@
-{%- set var_dir = pillar.get('var_dir', '/var/lib/saltbox/') %}
+{%- set var_dir = pillar.get('var_dir', '/var/lib/saltbox-bridge/') %}
 Host saltbox-sshfs
   User '{{ pillar.get('sshfs_user', 'saltbox') }}'
   Hostname '{{ pillar.get('sshfs_server', 'sshfs') }}'

@@ -9,7 +9,7 @@ update_gitfs_conf:
 {% if pillar.get('sshfs_sync_on', True) %}
   {% set sshfs_src = pillar.get('sshfs_source', '/srv/sshfs/') %}
   {% set sshfs_dst = pillar.get('sshfs_destination', '/srv/sshfs/') %}
-  {%- set var_dir = pillar.get('var_dir', '/var/lib/saltbox/') %}
+  {%- set var_dir = pillar.get('var_dir', '/var/lib/saltbox-bridge/') %}
 
   {% set ssh_conf = var_dir + '/ssh/sshfs_ssh.conf' %}
 

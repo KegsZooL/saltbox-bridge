@@ -14,7 +14,7 @@ MASTER_SECRET='${MASTER_SECRET}'
 
 GITFS_SERVER=sshfs
 GITFS_PORT=1022
-GITFS_PRIVKEY='/var/lib/saltbox/ssh/saltbox_ed25519'
-GITFS_PUBKEY='/var/lib/saltbox/ssh/saltbox_ed25519.pub'
+GITFS_PRIVKEY='/var/lib/saltbox-bridge/ssh/saltbox_ed25519'
+GITFS_PUBKEY='/var/lib/saltbox-bridge/ssh/saltbox_ed25519.pub'
 
 SSHFS_SYNC_ON=False

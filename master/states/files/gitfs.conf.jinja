@@ -1,5 +1,5 @@
 {%- set sb_repos = pillar['gitfs_repos'] %}
-{%- set var_dir = pillar.get('var_dir', '/var/lib/saltbox/') %}
+{%- set var_dir = pillar.get('var_dir', '/var/lib/saltbox-bridge/') %}
 {%- set sshfs_server = pillar.get('gitfs_sshfs_server', 'sshfs') %}
 {%- set sshfs_port = pillar.get('gitfs_sshfs_port', '1022') | string %}
 {%- set sshfs_user= pillar.get('gitfs_sshfs_user', 'git') %}

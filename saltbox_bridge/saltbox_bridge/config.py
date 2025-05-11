@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     redis_ssl_use: bool = Field(alias='REDIS_SSL_USE', default=True)
     redis_ssl_cert_reqs: SslCertReqs = Field(alias='REDIS_SSL_CERT_REQS', default='required')
     redis_ssl_ca_certs: str | None = Field(alias='REDIS_SSL_CA_CERTS', default=None)
-    var_dir: DirectoryPath = Path('/var/lib/saltbox/')
+    var_dir: DirectoryPath = Path('/var/lib/saltbox-bridge/')
     gitfs_server: str
     gitfs_port: int = 22
     gitfs_user: str = 'git'
