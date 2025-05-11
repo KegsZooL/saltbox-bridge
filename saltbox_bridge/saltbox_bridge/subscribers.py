@@ -141,6 +141,7 @@ async def sync_repos(
         'var_dir': str(SETTINGS.var_dir),
         'sshfs_server': SETTINGS.gitfs_server,
         'sshfs_port': SETTINGS.gitfs_port,
+        'sshfs_sync_on': SETTINGS.sshfs_sync_on,
         'gitfs_privkey': str(SETTINGS.gitfs_privkey),
         'gitfs_pubkey': str(SETTINGS.gitfs_pubkey),
         'saltbox_env': 'saltbox',
