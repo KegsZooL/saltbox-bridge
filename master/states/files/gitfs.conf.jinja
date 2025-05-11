@@ -36,6 +36,7 @@ gitfs_remotes: {{- ' []' if not sb_repos }}
   {%- set repo_line = 'ssh://{}@{}/~/{}'.format(sshfs_user, sshfs_sock, repo.local_path) %}
   # Salt.Box name: {{ repo.name }}
   - {{ repo_line | yaml_squote }}:
+    - root: {{ repo.root | yaml_squote }}
     - saltenv:
       - {{ saltbox_env | yaml_squote }}: [ ref: {{ repo.branch | yaml_squote }} ]
   {%- endfor -%}

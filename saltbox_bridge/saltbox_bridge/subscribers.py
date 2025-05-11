@@ -130,11 +130,10 @@ async def sync_repos(
     salt_connector: SaltConnector = Context(),
 ) -> Any:
     # TODO True async?
-    # TODO Setup gitfs
-    # TODO rsync files
     # TODO lock file
     # TODO Notify Salt.Box Core
 
+    LOGGER.info('Start sync_repos')
     caller = get_salt_caller()
     repos = [r.dict() for r in message.repos]
     pillar = {
