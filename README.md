@@ -84,7 +84,6 @@ REDIS_SSL_CA_CERTS='/etc/salt/ssl/redis-ca.crt'
 
 ## Time to live for job returns and grains (sec)
 EXPIRE=604800
-MASTER_SECRET='MASTER_SECRET'
 
 ## Following options will be used to setup SaltStack GitFS
 ## Address of Salt.Box main server
