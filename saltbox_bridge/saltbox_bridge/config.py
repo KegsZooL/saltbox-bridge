@@ -34,7 +34,13 @@ class Settings(BaseSettings):
     redis_ssl_use: bool = Field(alias='REDIS_SSL_USE', default=True)
     redis_ssl_cert_reqs: SslCertReqs = Field(alias='REDIS_SSL_CERT_REQS', default='required')
     redis_ssl_ca_certs: str | None = Field(alias='REDIS_SSL_CA_CERTS', default=None)
+
+    # Salt box
     var_dir: DirectoryPath = Path('/var/lib/saltbox-bridge/')
+    expire: int | None = Field(alias='EXPIRE', default=604800)
+    max_count_of_gather_minions: int = Field(alias='MAX_COUNT_OF_GATHER_MINIONS', default=100)
+
+    # Gitfs
     gitfs_server: str
     gitfs_port: int = 22
     gitfs_user: str = 'git'
@@ -49,12 +55,14 @@ class Settings(BaseSettings):
     sshfs_source: Path = Path('/srv/sshfs/')
     sshfs_destination: Path = Path('/srv/sshfs/')
 
-    # Salt box
-    expire: int | None = Field(alias='EXPIRE', default=604800)
-    master_secret: str = Field(alias='MASTER_SECRET')
-    max_count_of_gather_minions: int = Field(alias='MAX_COUNT_OF_GATHER_MINIONS', default=100)
+    # GPG
+    gpg_key_length: int = 4096
+    gog_key_name_real: str = 'Saltbox master - {master}'
+    gpg_key_email: str = '{master}@saltbox.pro'
+    gpg_key_comment: str = 'This is a certificate for saltbox services'
 
     model_config = SettingsConfigDict(env_file='/etc/salt/saltbox.conf')
+
 
     @property
     def redis_protocol(self) -> str:
