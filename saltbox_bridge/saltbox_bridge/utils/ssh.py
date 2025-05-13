@@ -22,6 +22,6 @@ def ensure_ssh_key(privkey_file: Path, key_type: str = 'ed25519') -> None:
     directory.chmod(SSH_DIR_MODE)
 
     cmd = ['ssh-keygen', '-t', key_type, '-N', '', '-f', str(privkey_file)]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, stdin=subprocess.DEVNULL, check=True)
 
     LOGGER.info('SSH key generated: %s', privkey_file)
