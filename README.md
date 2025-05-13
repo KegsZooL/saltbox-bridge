@@ -63,47 +63,46 @@ schedule:
       redis_host: redis-salt
 ```
 
-Put `saltbox.conf` file to `/etc/salt/`:
-```
-# /etc/salt/saltbox.conf
+Put `saltbox` YAML file to `/etc/salt/`:
+```yaml
+# /etc/salt/saltbox
 
 ## Salt.Box config
-## File has env-file format.
+## File is YAML formatted.
 
-## Redis conf
-
+## Redis config
 ## REDIS_HOST is host with deployed saltbox-compose
-REDIS_HOST='REDIS_HOST'
+redis_host: 'REDIS_HOST'
 ## REDIS_USERNAME is REDIS_SALT_USERNAME from saltbox-compose `.env` file
-REDIS_USERNAME='REDIS_USERNAME'
+redis_username: 'REDIS_USERNAME'
 ## REDIS_PASSWORD is in `secrets/redis_salt_password`
-REDIS_PASSWORD='REDIS_PASSWORD'
-REDIS_SSL_USE=True
+redis_password: 'REDIS_PASSWORD'
+redis_ssl_use: true
 ## Where the cert had been saved before
-REDIS_SSL_CA_CERTS='/etc/salt/ssl/redis-ca.crt'
+redis_ssl_ca_certs: '/etc/salt/ssl/redis-ca.crt'
 
 ## Time to live for job returns and grains (sec)
-EXPIRE=604800
+expire: 604800
 
 ## Following options will be used to setup SaltStack GitFS
 ## Address of Salt.Box main server
-GITFS_SERVER='saltbox.local'  # CHANGE ME
+gitfs_server: 'saltbox.local'  # CHANGE ME
 ## Port of Salt.Box main server which sshfs service listen
-GITFS_PORT=1022
+gitfs_port: 1022
 
 ## Settings of files replication from Salt.Box sshfs service
 ## Replication should be enabled for remote master
-SSHFS_SYNC_ON='True'
+sshfs_sync_on: true
 ## Address of Salt.Box main server to sync FROM
-SSHFS_SERVER='saltbox.local'  # CHANGE ME
+sshfs_server: 'saltbox.local'  # CHANGE ME
 ## Port of Salt.Box main server which sshfs service listen
-SSHFS_PORT=1022
+sshfs_port: 1022
 ## SSH user name to access files
-SSHFS_USER='saltbox'
+sshfs_user: 'saltbox'
 ## Path on REMOTE server where files kept
-SSHFS_SOURCE='/srv/sshfs/'
+sshfs_source: '/srv/sshfs/'
 ## Path on LOCAL server where files will be placed
-SSHFS_DESTINATION='/srv/sshfs/'  # CHANGE ME
+sshfs_destination: '/srv/sshfs/'  # CHANGE ME
 ```
 
 Use `./make_master_id.sh` helper script to create id with hostname and timestamp

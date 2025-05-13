@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from pydantic import BaseModel, DirectoryPath, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, YamlConfigSettingsSource
+)
 
 from saltbox_bridge.utils.types import SslCertReqs
 
@@ -26,24 +28,26 @@ class FaststreamRedisConf:
 
 class Settings(BaseSettings):
     # Redis
-    redis_host: str = Field(alias='REDIS_HOST', default='localhost')
-    redis_port: int = Field(alias='REDIS_PORT', default=6379)
-    redis_username: str = Field(alias='REDIS_USERNAME')
-    redis_password: str = Field(alias='REDIS_PASSWORD')
-    redis_db: int = Field(alias='REDIS_DB', default=0)
-    redis_ssl_use: bool = Field(alias='REDIS_SSL_USE', default=True)
-    redis_ssl_cert_reqs: SslCertReqs = Field(alias='REDIS_SSL_CERT_REQS', default='required')
-    redis_ssl_ca_certs: str | None = Field(alias='REDIS_SSL_CA_CERTS', default=None)
+    redis_host: str = 'localhost'
+    redis_port: int = 6379
+    redis_username: str
+    redis_password: str
+    redis_db: int = 0
+    redis_ssl_use: bool = True
+    redis_ssl_cert_reqs: SslCertReqs = 'required'
+    redis_ssl_ca_certs: str | None = None
 
-    # Salt box
+    # General Salt.Box
     var_dir: DirectoryPath = Path('/var/lib/saltbox-bridge/')
-    expire: int | None = Field(alias='EXPIRE', default=604800)
-    max_count_of_gather_minions: int = Field(alias='MAX_COUNT_OF_GATHER_MINIONS', default=100)
+    expire: int | None = 604800
+    max_count_of_gather_minions: int = 100
 
-    # Gitfs
+    # Salt master GitFS
     gitfs_server: str
     gitfs_port: int = 22
     gitfs_user: str = 'git'
+
+    # SSHFS replication
     sshfs_sync_on: bool = True
     sshfs_server: str | None = None
     sshfs_port: int = 22
@@ -57,8 +61,18 @@ class Settings(BaseSettings):
     gpg_key_email: str = '{master}@saltbox.pro'
     gpg_key_comment: str = 'This is a certificate for saltbox services'
 
-    model_config = SettingsConfigDict(env_file='/etc/salt/saltbox.conf')
+    model_config = SettingsConfigDict(yaml_file='/etc/salt/saltbox')
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (YamlConfigSettingsSource(settings_cls),)
 
     @property
     def redis_protocol(self) -> str:

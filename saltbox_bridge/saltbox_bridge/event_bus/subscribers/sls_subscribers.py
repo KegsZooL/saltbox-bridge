@@ -7,7 +7,7 @@ from faststream import Context
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 
-from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.config import HIERARHY, SETTINGS
 from saltbox_bridge.event_bus.messages.sls_messages import ListSlsReposMessage
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.salt_connector import SaltConnector, get_salt_caller, get_state_apply_error
@@ -37,8 +37,8 @@ async def sync_repos(
         'sshfs_server': SETTINGS.gitfs_server,
         'sshfs_port': SETTINGS.gitfs_port,
         'sshfs_sync_on': SETTINGS.sshfs_sync_on,
-        'gitfs_privkey': str(SETTINGS.gitfs_privkey),
-        'gitfs_pubkey': str(SETTINGS.gitfs_pubkey),
+        'gitfs_privkey': str(HIERARHY.gitfs_privkey),
+        'gitfs_pubkey': str(HIERARHY.gitfs_pubkey),
         'saltbox_env': 'saltbox',
     }
     ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)
