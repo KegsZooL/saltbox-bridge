@@ -30,3 +30,6 @@ version = { attr = 'saltbox_bridge.__version__' }
 max-line-length = 120
 extend-ignore = [ 'E701' ]
 builtins = [ '__opts__', '__salt__' ]
+
+[tool.mypy]
+plugins = [ 'pydantic.mypy' ]

@@ -90,8 +90,6 @@ EXPIRE=604800
 GITFS_SERVER='saltbox.local'  # CHANGE ME
 ## Port of Salt.Box main server which sshfs service listen
 GITFS_PORT=1022
-GITFS_PRIVKEY='/var/lib/saltbox-bridge/ssh/saltbox_ed25519'
-GITFS_PUBKEY='/var/lib/saltbox-bridge/ssh/saltbox_ed25519.pub'
 
 ## Settings of files replication from Salt.Box sshfs service
 ## Replication should be enabled for remote master

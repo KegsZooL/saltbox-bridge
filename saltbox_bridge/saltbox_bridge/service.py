@@ -24,7 +24,7 @@ from contextlib import asynccontextmanager
 import salt.config
 from faststream import ContextRepo
 
-from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.config import SETTINGS, HIERARHY
 from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
 
@@ -33,6 +33,7 @@ from saltbox_bridge.event_bus.subscribers import router
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 from saltbox_bridge.utils.salt_connector import SaltConnector
+from saltbox_bridge.utils.ssh import ensure_ssh_key
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 
@@ -47,6 +48,9 @@ async def _async_start(
     await core_connector.wait_success_connection(try_to_fix=True, ttl=900)
     if not core_connector.is_connection_success:
         sys.exit(1)
+
+    ensure_ssh_key(HIERARHY.gitfs_privkey)
+    ensure_ssh_key(HIERARHY.sshfs_privkey)
 
     @asynccontextmanager
     async def lifespan(context: ContextRepo):
