@@ -57,10 +57,6 @@ schedule:
   saltbox_delator_cleanup:
     hours: 3
     function: saltbox_delator.cleanup_expired_jobs
-    kwargs:
-      # Age of jobs to delete (sec)
-      expire: 604800
-      redis_host: redis-salt
 ```
 
 Put `saltbox` YAML file to `/etc/salt/`:
@@ -82,6 +78,8 @@ redis_ssl_use: true
 redis_ssl_ca_certs: '/etc/salt/ssl/redis-ca.crt'
 
 ## Time to live for job returns and grains (sec)
+## `null` (with no quotes) to not expire.
+## WARNING! `null` value may lead to worse perfomance and intensive storage usage.
 expire: 604800
 
 ## Following options will be used to setup SaltStack GitFS

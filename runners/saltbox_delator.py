@@ -2,41 +2,36 @@
 FastMS engines.saltbox_delator related functions
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
 
-import redis
+from redis import ConnectionError
 from salt.exceptions import CommandExecutionError  # type: ignore
+
+from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.redis import get_sync_redis_client
+
+LOGGER = logging.getLogger(__name__)
 
 
 def __virtual__() -> bool:  # noqa: N807
     return True
 
 
-def cleanup_expired_jobs(expire: int, redis_host='localhost', port=6379, db=0) -> int:
+def cleanup_expired_jobs() -> int:
     """
     Cleanup expired records in jobs sorted set and return amount of deletions
-
-    expire
-        How old in seconds records will be deleted
-
-    redis_host: 'localhost'
-        Redis host connection option
-
-    port: 6379
-        Redis port connection option
-
-    db: 0
-        Redis db connection option
-
-    CLI Example:
-
-    .. code-block:: bash
-
-        salt-run saltbox_delator.cleanup_expired_jobs 3600 redis_host=redis-host
     """
-    redis_client = redis.Redis(host=redis_host, port=port, db=db)
-    expiration_time = (datetime.now(tz=timezone.utc) - timedelta(seconds=expire)).timestamp()
+    if SETTINGS.expire is None:
+        LOGGER.info('Expiration is disabled with expire option, nothing to do')
+        return 0
+
+    redis_client = get_sync_redis_client()
+    expiration_time = (datetime.now(tz=timezone.utc) - timedelta(seconds=SETTINGS.expire)).timestamp()
     try:
-        return redis_client.zremrangebyscore('jobs', min=0.0, max=expiration_time)
-    except redis.ConnectionError as err:
+        LOGGER.info('Running expired job records cleanup')
+        deleted_jobs_num = redis_client.zremrangebyscore('jobs', min=0.0, max=expiration_time)
+        LOGGER.info('%i expired job records deleted', deleted_jobs_num)
+        return deleted_jobs_num
+    except ConnectionError as err:
         raise CommandExecutionError(err) from err

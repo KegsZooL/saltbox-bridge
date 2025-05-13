@@ -93,6 +93,7 @@ SETTINGS = Settings()
 
 
 class Hierarhy(BaseModel):
+    """ File hierarhy """
     var_dir: Path = SETTINGS.var_dir
     # Place to keep SSH client files
     ssh_dir: Path = var_dir / 'ssh'

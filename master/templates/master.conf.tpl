@@ -21,9 +21,5 @@ schedule:
   saltbox_delator_cleanup:
     hours: 3
     function: saltbox_delator.cleanup_expired_jobs
-    kwargs:
-      # Age of jobs to delete (sec)
-      expire: 604800
-      redis_host: redis-salt
 
 # vi: syn=yaml
