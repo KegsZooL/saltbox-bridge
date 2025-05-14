@@ -7,9 +7,16 @@ from typing import Any
 
 from faststream.redis import RedisBroker, RedisMessage
 
+from saltbox_bridge.config import HIERARHY
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
 from saltbox_bridge.event_bus.messages.base_messages import BaseMessage
-from saltbox_bridge.event_bus.messages.system_messages import AuthMessage, MasterStatus, MasterStatusMessage
+from saltbox_bridge.event_bus.messages.system_messages import (
+    AuthRequestMessage,
+    AuthResponceMessage,
+    MasterStatus,
+    MasterStatusMessage,
+    SshPubKeyModel
+)
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 
@@ -53,6 +60,7 @@ class CoreConnector:
         broker: RedisBroker | None = None,
         is_need_auth: bool = False,
     ) -> Any:
+        LOGGER.info('Sending message to Core: %s', message_tag)
         if not broker:
             if is_need_auth:
                 broker = get_faststream_broker(middlewares=[MastersAuthMiddleware])
@@ -80,21 +88,21 @@ class CoreConnector:
         self.is_pubkey_set = master_status.is_pubkey_set
 
     async def auth_master(self) -> None:
-        master_auth: AuthMessage = AuthMessage(
+        master_auth = AuthResponceMessage(
             **await self.send_messge_and_wait_responce(
-                message=AuthMessage(master=self.master_id, pubkey=self.saltbox_crypt.pubkey),
+                message=self._make_auth_req_message(),
                 message_tag='auth',
                 is_need_auth=False,
             )
         )
 
-        if master_auth.pubkey:
-            self.saltbox_crypt.save_pubkey_core(key_data=master_auth.pubkey)
+        if master_auth.crypt_pubkey:
+            self.saltbox_crypt.save_pubkey_core(key_data=master_auth.crypt_pubkey)
 
         await self.update_master_status()
 
     async def check_connection(self, try_to_fix: bool = True, silent: bool = True) -> None:
-        await self.update_master_status()
+        await self.auth_master()
         self.is_connection_success = False
 
         try:
@@ -147,3 +155,12 @@ class CoreConnector:
 
         LOGGER.info('Connection to core succeeded.')
         return None
+
+    def _make_auth_req_message(self) -> AuthRequestMessage:
+        sshfs_pubkey = HIERARHY.sshfs_pubkey.open().read().strip()
+        gitfs_pubkey = HIERARHY.gitfs_pubkey.open().read().strip()
+        return AuthRequestMessage(
+            master=self.master_id,
+            crypt_pubkey=self.saltbox_crypt.pubkey,
+            gitfs_pubkey=SshPubKeyModel.from_str(gitfs_pubkey),
+            sshfs_pubkey=SshPubKeyModel.from_str(sshfs_pubkey),)

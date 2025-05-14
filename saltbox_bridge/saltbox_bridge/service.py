@@ -24,19 +24,19 @@ from contextlib import asynccontextmanager
 import salt.config
 from faststream import ContextRepo
 
-from saltbox_bridge.config import SETTINGS, HIERARHY
+from saltbox_bridge.config import HIERARHY, SETTINGS
 from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
 
-# from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
+#from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.event_bus.subscribers import router
+from saltbox_bridge.exceptions import CoreConnectionError
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 from saltbox_bridge.utils.salt_connector import SaltConnector
-from saltbox_bridge.utils.ssh import ensure_ssh_key
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
-
+LOGGER = logging.getLogger(__name__)
 
 async def _async_start(
     salt_opts: dict,
@@ -47,10 +47,8 @@ async def _async_start(
 
     await core_connector.wait_success_connection(try_to_fix=True, ttl=900)
     if not core_connector.is_connection_success:
-        sys.exit(1)
-
-    ensure_ssh_key(HIERARHY.gitfs_privkey)
-    ensure_ssh_key(HIERARHY.sshfs_privkey)
+        msg = 'Failed to connect to Core service'
+        raise CoreConnectionError(msg)
 
     @asynccontextmanager
     async def lifespan(context: ContextRepo):

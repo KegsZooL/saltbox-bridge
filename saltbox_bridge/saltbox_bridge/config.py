@@ -8,6 +8,7 @@ from pydantic_settings import (
     BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, YamlConfigSettingsSource
 )
 
+from saltbox_bridge.utils.ssh import ensure_ssh_key
 from saltbox_bridge.utils.types import SslCertReqs
 
 LOGGER = logging.getLogger(__name__)
@@ -116,6 +117,7 @@ class Hierarhy:
         self.sshfs_pubkey: Path = self.gitfs_pubkey
 
         self._make_dirs()
+        self._ensure_keys()
 
     def _make_dirs(self) -> None:
         if not self.gpg_dir.exists():
@@ -126,6 +128,10 @@ class Hierarhy:
             LOGGER.info('Creating directory for SSH client files: %s', self.ssh_dir)
             self.ssh_dir.mkdir(parents=True)
         self.ssh_dir.chmod(self.SSH_DIR_MODE)
+
+    def _ensure_keys(self) -> None:
+        ensure_ssh_key(self.gitfs_privkey)
+        ensure_ssh_key(self.sshfs_privkey)
 
 
 HIERARHY = Hierarhy()

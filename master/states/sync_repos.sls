@@ -14,7 +14,7 @@ update_gitfs_conf:
   {% set ssh_conf = ssh_dir + '/sshfs_ssh.conf' %}
 
 sync_sshfs:
-  file.managed:  # FIXMED
+  file.managed:
     - name: {{ ssh_conf | yaml_squote }}
     - source:
       - 'salt://files/sshfs_ssh.conf.jinja'
