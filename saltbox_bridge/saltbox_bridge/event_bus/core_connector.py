@@ -23,9 +23,15 @@ from saltbox_bridge.utils.gpg import SaltBoxCrypt
 LOGGER = logging.getLogger(__name__)
 
 
-class ConnectionsIsNotSuccessful(Exception):
+class ConnectionFail(Exception):
     pass
 
+# TODO: Only Auth message
+#
+#    Auth ->
+#         <- Status
+#    [ repeate with pause while status is not accepted ]
+#
 
 class CoreConnector:
     def __init__(self, master_id: str, saltbox_crypt: SaltBoxCrypt):
@@ -105,36 +111,16 @@ class CoreConnector:
         await self.auth_master()
         self.is_connection_success = False
 
-        try:
-            if self.master_status != MasterStatus.accepted:
-                msg = 'Master status is not accepted. Waiting...'
-                raise ConnectionsIsNotSuccessful(msg)
+        if self.master_status != MasterStatus.accepted:
+            msg = 'Master status is not accepted. Waiting...'
 
-            if not self.is_pubkey_set:
-                if try_to_fix:
-                    msg = 'Master pubkey is not set on core. Sending master pubkey to core and waiting...'
-                    await self.auth_master()
-                else:
-                    msg = 'Master pubkey is not set on core. Waiting...'
-
-                raise ConnectionsIsNotSuccessful(msg)
-
-            if not self.saltbox_crypt.is_pubkey_core_exists:
-                if try_to_fix:
-                    msg = 'Core pubkey is not resieved on master. Sending auth request and waiting...'
-                    await self.auth_master()
-                else:
-                    msg = 'Core pubkey is not resieved on master. Waiting...'
-
-                raise ConnectionsIsNotSuccessful(msg)
-        except ConnectionsIsNotSuccessful as e:
             self.dt_last_check = datetime.now(timezone.utc)
 
             if silent:
-                LOGGER.warning(e)
-                return None
+                LOGGER.warning(msg)
+                return
             else:
-                raise e
+                raise ConnectionFail(msg)
 
         self.dt_last_check = datetime.now(timezone.utc)
         self.is_connection_success = True
@@ -148,13 +134,13 @@ class CoreConnector:
         while not self.is_connection_success:
             if datetime.now(timezone.utc) - dt_start_check > timedelta(seconds=ttl):
                 LOGGER.warning('Connection timed out. Waiting...')
-                return None
+                return
 
             await self.check_connection(try_to_fix=try_to_fix)
             await sleep(10)
 
         LOGGER.info('Connection to core succeeded.')
-        return None
+        return
 
     def _make_auth_req_message(self) -> AuthRequestMessage:
         sshfs_pubkey = HIERARHY.sshfs_pubkey.open().read().strip()
