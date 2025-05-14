@@ -39,7 +39,7 @@ async def sync_repos(
         'sshfs_sync_on': SETTINGS.sshfs_sync_on,
         'gitfs_privkey': str(HIERARHY.gitfs_privkey),
         'gitfs_pubkey': str(HIERARHY.gitfs_pubkey),
-        'saltbox_env': 'saltbox',
+        'saltbox_env': 'base',  # TODO: Customize
     }
     ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)
     LOGGER.info('End sync_repos')
