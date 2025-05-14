@@ -59,6 +59,18 @@ schedule:
     function: saltbox_delator.cleanup_expired_jobs
 ```
 
+Put contents of [`master/states/`](master/states/) directory to __minion__
+`file_roots` directory. By default minion roots is `/srv/salt/`, but it is
+prefferd to change it to not interfere with master default roots:
+
+```yaml
+# /etc/salt/minion on master host
+
+file_roots:
+    base:
+        - '/srv/salt_local/'
+```
+
 Put `saltbox` YAML file to `/etc/salt/`:
 ```yaml
 # /etc/salt/saltbox
