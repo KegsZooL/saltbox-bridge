@@ -33,7 +33,7 @@ async def sync_repos(
     repos = [r.dict() for r in message.repos]
     pillar = {
         'gitfs_repos': repos,
-        'var_dir': str(SETTINGS.var_dir),
+        'ssh_dir': str(HIERARHY.ssh_dir),
         'sshfs_server': SETTINGS.gitfs_server,
         'sshfs_port': SETTINGS.gitfs_port,
         'sshfs_sync_on': SETTINGS.sshfs_sync_on,

@@ -6,7 +6,7 @@ from typing import cast
 
 from gnupg import GPG, GenKey, ListKeys, Sign  # type: ignore
 
-from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.config import HIERARHY, SETTINGS
 from saltbox_bridge.utils.types import Singleton
 
 LOGGER = logging.getLogger(__name__)
@@ -42,14 +42,8 @@ class SaltBoxCrypt(metaclass=Singleton):
         if self._gpg:
             return self._gpg
 
-        # Prepare dir
-        gnupg_home_dir = Path(SETTINGS.var_dir).joinpath('gpg')
-        if not gnupg_home_dir.exists():
-            gnupg_home_dir.mkdir(parents=True, exist_ok=True)
-        gnupg_home_dir.chmod(0o700)
-
         # Init GPG
-        gpg = GPG(gnupghome=gnupg_home_dir.as_posix())
+        gpg = GPG(gnupghome=HIERARHY.gpg_dir.as_posix())
         gpg.encoding = 'utf-8'
 
         self._gpg = gpg

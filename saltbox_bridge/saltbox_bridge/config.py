@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
-from pydantic import BaseModel, DirectoryPath, Field
+from pydantic import BaseModel, DirectoryPath
 from pydantic_settings import (
     BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, YamlConfigSettingsSource
 )
 
 from saltbox_bridge.utils.types import SslCertReqs
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FaststreamRedisConf:
@@ -92,15 +95,37 @@ class Settings(BaseSettings):
 SETTINGS = Settings()
 
 
-class Hierarhy(BaseModel):
-    """ File hierarhy """
-    var_dir: Path = SETTINGS.var_dir
-    # Place to keep SSH client files
-    ssh_dir: Path = var_dir / 'ssh'
-    gitfs_privkey: Path = ssh_dir / 'saltbox_ed25519'
-    gitfs_pubkey: Path = ssh_dir / 'saltbox_ed25519.pub'
-    sshfs_privkey: Path = gitfs_privkey
-    sshfs_pubkey: Path = gitfs_pubkey
+class Hierarhy:
+    """
+    File hierarhy
+
+    Paths are not directly configurable with config file.
+    Directories are guaranted to be created and have correct mode.
+    """
+    SSH_DIR_MODE: int = 0o700
+    GPG_DIR_MODE: int = 0o700
+
+    def __init__(self) -> None:
+        self.var_dir: Path = SETTINGS.var_dir
+        # Place to keep SSH client files
+        self.ssh_dir: Path = self.var_dir / 'ssh'
+        self.gpg_dir: Path = self.var_dir / 'gpg'
+        self.gitfs_privkey: Path = self.ssh_dir / 'saltbox_ed25519'
+        self.gitfs_pubkey: Path = self.ssh_dir / 'saltbox_ed25519.pub'
+        self.sshfs_privkey: Path = self.gitfs_privkey
+        self.sshfs_pubkey: Path = self.gitfs_pubkey
+
+        self._make_dirs()
+
+    def _make_dirs(self) -> None:
+        if not self.gpg_dir.exists():
+            LOGGER.info('Creating directory for GPG keys: %s', self.gpg_dir)
+            self.gpg_dir.mkdir(parents=True)
+        self.gpg_dir.chmod(self.GPG_DIR_MODE)
+        if not self.ssh_dir.exists():
+            LOGGER.info('Creating directory for SSH client files: %s', self.ssh_dir)
+            self.ssh_dir.mkdir(parents=True)
+        self.ssh_dir.chmod(self.SSH_DIR_MODE)
 
 
 HIERARHY = Hierarhy()
