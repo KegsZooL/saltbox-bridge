@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 
-from salt.exceptions import SaltMasterError, SaltRunnerError
+from salt.exceptions import SaltMasterError, SaltRunnerError  # type: ignore
 
 JID_REGEX = (
     r'^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})'

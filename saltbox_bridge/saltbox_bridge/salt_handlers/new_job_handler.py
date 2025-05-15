@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Any
 
-from salt.utils import json
+from salt.utils import json  # type: ignore
 
 from saltbox_bridge.exceptions import StopProcessing
 from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler

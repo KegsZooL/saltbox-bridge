@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Any
 
-from salt.utils import json
+from salt.utils import json  # type: ignore
 
 from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.event_bus.messages.minion_messages import GrainsOutMessage
@@ -34,13 +34,13 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         raise StopProcessing()
 
-    async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str):
+    async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str) -> None:
         hash_name = f'job:{jid}:return'
 
         async with self.redis_client.pipeline(transaction=True) as pipe:
             pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
             if SETTINGS.expire is not None:
-                pipe = pipe.expire(name=hash_name, time=SETTINGS.expire)  # type: ignore
+                pipe = pipe.expire(name=hash_name, time=SETTINGS.expire)
             await pipe.execute()
 
         await self.redis_client.publish(channel=hash_name, message=data_json)
@@ -64,7 +64,7 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
 
     tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
 
-    async def _process_task(self, jid, tid, data_json):
+    async def _process_task(self, jid: str, tid: str, data_json: str | bytes) -> None:
         await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:return', message=data_json)
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:

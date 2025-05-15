@@ -31,10 +31,8 @@ def __virtual__() -> bool | tuple[bool, str]:  # noqa: N807
     return True
 
 
-def start():
-    """
-    Start a salt.box service.
-    """
+def start() -> None:
+    """Start a salt.box service."""
 
     LOGGER.info('Starting salt.box service as an engine')
     start_service(salt_opts=__opts__)  # noqa: F821

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import TypedDict
 
 from faststream import context
-from salt.utils.event import get_master_event
+from faststream.redis import RedisBroker
+from redis.asyncio.client import Redis
+from salt.utils.event import get_master_event  # type: ignore
 
 from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.event_bus.core_connector import CoreConnector
@@ -24,6 +27,12 @@ from saltbox_bridge.utils.gpg import SaltBoxCrypt
 LOGGER = logging.getLogger(__name__)
 
 
+class HandlersArgs(TypedDict):
+    redis_client: Redis
+    broker: RedisBroker
+    salt_opts: dict
+
+
 class SaltBridge:
     def __init__(
         self,
@@ -35,7 +44,7 @@ class SaltBridge:
         self.broker = get_faststream_broker(
             redis_conf=SETTINGS.faststream_redis_conf, middlewares=[MastersAuthMiddleware]
         )
-        handlers_args = {
+        handlers_args: HandlersArgs = {
             'redis_client': self.redis_client,
             'broker': self.broker,
             'salt_opts': self.salt_opts,

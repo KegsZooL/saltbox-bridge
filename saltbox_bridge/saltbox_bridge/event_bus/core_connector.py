@@ -26,12 +26,14 @@ LOGGER = logging.getLogger(__name__)
 class ConnectionFail(Exception):
     pass
 
+
 # TODO: Only Auth message
 #
 #    Auth ->
 #         <- Status
 #    [ repeate with pause while status is not accepted ]
 #
+
 
 class CoreConnector:
     def __init__(self, master_id: str, saltbox_crypt: SaltBoxCrypt):
@@ -126,7 +128,7 @@ class CoreConnector:
         self.is_connection_success = True
         return None
 
-    async def wait_success_connection(self, try_to_fix: bool = True, ttl=900) -> None:
+    async def wait_success_connection(self, try_to_fix: bool = True, ttl: int = 900) -> None:
         dt_start_check: datetime = datetime.now(timezone.utc)
 
         LOGGER.info('Waiting for connection...')
@@ -149,4 +151,5 @@ class CoreConnector:
             master=self.master_id,
             crypt_pubkey=self.saltbox_crypt.pubkey,
             gitfs_pubkey=SshPubKeyModel.from_str(gitfs_pubkey),
-            sshfs_pubkey=SshPubKeyModel.from_str(sshfs_pubkey),)
+            sshfs_pubkey=SshPubKeyModel.from_str(sshfs_pubkey),
+        )

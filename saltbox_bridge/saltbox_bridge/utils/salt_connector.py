@@ -5,9 +5,9 @@ import logging
 from typing import Any, cast
 
 from redis.asyncio import Redis
-from salt.client import Caller, LocalClient
-from salt.config import minion_config
-from salt.exceptions import SaltException
+from salt.client import Caller, LocalClient  # type: ignore
+from salt.config import minion_config  # type: ignore
+from salt.exceptions import SaltException  # type: ignore
 
 from saltbox_bridge.exceptions import CreateJobError
 from saltbox_bridge.utils.types import SaltTgtType
@@ -50,7 +50,7 @@ class SaltConnector:
     def salt_client(self) -> LocalClient:
         # Common case is to recreate the LocalClient before use. Keeping it leads to errors.
         # mopts takes preloaded master options to avoid re-reading configs.
-        return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)  # type: ignore
+        return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
 
     async def create_job_from_redis(self, hash_name: str) -> str:
         job_data: dict[bytes, bytes] = await self.redis_client.hgetall(hash_name)
@@ -61,7 +61,7 @@ class SaltConnector:
         fun: str = job_data[b'fun'].decode()
         arg: list = json.loads(job_data[b'arg']) if b'arg' in job_data else []
         kwarg: dict = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else {}
-        status: str = job_data[b'status'].decode() if b'status' in job_data else None
+        status: str | None = job_data[b'status'].decode() if b'status' in job_data else None
 
         if status == 'processed':
             return jid
@@ -93,13 +93,13 @@ class SaltConnector:
 
     async def run_job_sync(
         self, tgt: str, tgt_type: SaltTgtType, fun: str, arg: list, kwarg: dict, jid: str | None
-    ) -> dict[str, dict]:
+    ) -> dict[str, dict] | Any:
         return self.salt_client.cmd(
             tgt=tgt, tgt_type=tgt_type, fun=fun, arg=arg, kwarg=kwarg, jid=jid, full_return=True
         )
 
-    async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> list[str]:
+    async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> Any | list[str]:
         return self.salt_client.gather_minions(tgt, tgt_type)
 
-    async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict]:
+    async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict] | Any:
         return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun='saltutil.refresh_pillar')

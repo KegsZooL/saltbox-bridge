@@ -40,7 +40,7 @@ class MastersAuthMiddleware(BaseMiddleware):
         elif isinstance(message, str):
             sign = self.crypt.sign_str(message)
         else:
-            msg = f'Unsupported message type: {type(message)}\n{message!s}'
+            msg = f'Unsupported message type: {type(message)}\n{message!s}'  # type: ignore[unreachable]
             raise CreateSignError(msg)
 
         return sign

@@ -62,7 +62,7 @@ class SaltBoxCrypt:
 
         return self._pubkey_core_path
 
-    def save_pubkey_core(self, key_data) -> None:
+    def save_pubkey_core(self, key_data: str) -> None:
         core_pubkey_path = self.pubkey_core_path
 
         with core_pubkey_path.open('w') as file:

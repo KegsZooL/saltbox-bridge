@@ -19,9 +19,10 @@ import asyncio
 import logging
 import os
 import sys
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-import salt.config
+import salt.config  # type: ignore
 from faststream import ContextRepo
 
 from saltbox_bridge.config import SETTINGS
@@ -52,7 +53,7 @@ async def _async_start(
         raise CoreConnectionError(msg)
 
     @asynccontextmanager
-    async def lifespan(context: ContextRepo):
+    async def lifespan(context: ContextRepo) -> AsyncIterator:
         redis_client = get_redis_client()
 
         salt_connector = SaltConnector(salt_opts=salt_opts, redis_client=redis_client)
@@ -81,7 +82,7 @@ async def _async_start(
 
 
 def start(
-    salt_opts: dict,
+    salt_opts: dict | None = None,
 ) -> None:
     if salt_opts is None:
         salt_opts = salt.config.client_config('/etc/salt/master')

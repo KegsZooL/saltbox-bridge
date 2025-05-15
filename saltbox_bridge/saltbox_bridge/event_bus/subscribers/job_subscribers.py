@@ -58,7 +58,9 @@ async def run_job_sync(
             jid=message.jid,
         )
 
-        jid: str = next(iter(job_result.values()), {}).get('jid', '')
+        # TODO: check this part
+        job_result_val: dict = next(iter(job_result.values()), {})
+        jid: str = job_result_val.get('jid', '')
 
         result = JobSyncOutMessage(
             **message.model_dump(exclude={'jid'}),

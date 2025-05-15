@@ -6,7 +6,7 @@ from typing import Any
 
 import redis.asyncio as redis
 from faststream.redis import RedisBroker
-from salt.client import LocalClient
+from salt.client import LocalClient  # type: ignore
 
 from saltbox_bridge.event_bus.messages.base_messages import BaseMessage
 
@@ -27,7 +27,7 @@ class BaseMessageHandler(abc.ABC):
 
     @property
     def salt_client(self) -> LocalClient:
-        return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)  # type: ignore
+        return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
 
     async def send_message(self, message: BaseMessage, message_tag: str) -> None:
         async with self.broker as br:
