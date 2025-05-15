@@ -12,6 +12,7 @@ from faststream.utils.context.repository import context
 from pydantic import BaseModel
 
 from saltbox_bridge.event_bus.messages.base_messages import AbstractMessage
+from saltbox_bridge.exceptions import CreateSignError
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 
 LOGGER = logging.getLogger(__name__)
@@ -27,12 +28,32 @@ class MastersAuthMiddleware(BaseMiddleware):
             self._crypt = context.get('saltbox_crypt')
 
         if not self._crypt:
-            self._crypt = SaltBoxCrypt(master_id=context.get('salt_box_master_id'))
+            self._crypt = SaltBoxCrypt(master_id=context.get('salt_box_master_id'), can_gen_new_key=False)
 
         return self._crypt
 
+    def create_signature(self, message: BaseModel | dict | str) -> str:
+        if isinstance(message, BaseModel):
+            sign = self.crypt.sign_str(message.model_dump_json())
+        elif isinstance(message, dict):
+            sign = self.crypt.sign_str(json.dumps(message))
+        elif isinstance(message, str):
+            sign = self.crypt.sign_str(message)
+        else:
+            msg = f'Unsupported message type: {type(message)}\n{message!s}'
+            raise CreateSignError(msg)
+
+        return sign
+
+    def validate_signature(self, message: bytes, sign: str) -> bool:
+        return True  # TODO @: check message signature
+
     async def consume_scope(self, call_next: AsyncFuncAny, msg: StreamMessage[Any]) -> Any:
-        # sign: str | None = msg.headers.pop('sign')  # TODO @: check message signature
+        # sign: str | None = msg.headers.pop('sign')
+        #
+        # if sign is None or not self.validate_signature(message=msg.raw_message, sign=sign):
+        #     return None
+
         try:
             message: AbstractMessage = AbstractMessage(**await msg.decode())  # type: ignore
         except Exception as e:
@@ -52,17 +73,6 @@ class MastersAuthMiddleware(BaseMiddleware):
         if not kwargs.get('headers'):  # By default, the "headers" item exists, but its value is None
             kwargs['headers'] = {}  # So "setdefault()" won't work in this situation
 
-        if isinstance(msg, BaseModel):
-            sign = self.crypt.sign_str(msg.model_dump_json())
-        elif isinstance(msg, dict):
-            sign = self.crypt.sign_str(json.dumps(msg))
-        elif isinstance(msg, str):
-            sign = self.crypt.sign_str(msg)
-        else:
-            message = f'Unsupported message type: {type(msg)}\n{msg!s}'
-            LOGGER.error(message)
-            return None
-
-        kwargs['headers']['sign'] = sign
+        # kwargs['headers']['sign'] = self.create_signature(msg)
 
         return await super().publish_scope(call_next, msg, *args, **kwargs)
