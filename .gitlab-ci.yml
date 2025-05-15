@@ -50,7 +50,7 @@ mypy:
   before_script:
     pip3 install -e ./saltbox_bridge[dev]
   script:
-    mypy saltbox_bridge
+    mypy saltbox_bridge --config-file ./saltbox_bridge/pyproject.toml
   cache:
     paths:
       - '.cache/pip/'
