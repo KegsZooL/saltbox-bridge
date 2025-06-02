@@ -5,43 +5,54 @@
 
 # This file is a part of Salt.Box system.
 
+ARG BASE_IMG='registry.altlinux.org/alt/alt:p11'
 
-ARG ALPINE_VERSION='3.20'
-# Current 3.10 == 3.10.17 seems broken for now 2025-04-09
-ARG PYTHON_VERSION='3.10.16'
-
-# TODO Altlinux branch US49_altlinux
-FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} AS salt-base
-ARG SALT_VERSION='3006.9'
-ARG BUILD_DEPS="gcc g++ autoconf make libffi-dev libgit2-dev"
-# Base dependencies
+FROM "$BASE_IMG" AS salt-base
 RUN \
-  --mount=type=cache,target=/var/cache/apk/,sharing=locked \
-  apk add binutils libgit2 libffi openssl-dev
-# pygit2 depends on specific libgit2 version
-RUN \
-  --mount=type=cache,target=/var/cache/apk/,sharing=locked \
-  --mount=type=cache,target=/root/.cache/pip/ \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
 <<EOF
 set -e
-apk add $BUILD_DEPS
-echo 'cython<3' > /root/constraint.txt
-PIP_CONSTRAINT=/root/constraint.txt USE_STATIC_REQUIREMENTS=1 \
-  pip3 install --no-build-isolation "salt==${SALT_VERSION}"
-pip3 install 'pygit2==1.13.1'
-rm /root/constraint.txt
-apk del $BUILD_DEPS
+mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
+apt-get update
+apt-get install --yes curl glibc-pthread openssl procps
+EOF
+ARG SALT_VERSION='3006.9'
+ARG SALT_TARBALL_SHA512='26cc4a5377c643ba7a20250040e5d95336398c1060d8102aa016269f360027a46416f2b0f6f2343dc928bbcdb712f00f6618ce6572ba88643b1a32487ae0f03b'
+ARG _SALT_TARBALL_FILENAME="salt-${SALT_VERSION}-onedir-linux-x86_64.tar.xz"
+ARG _SALT_ONEDIR_URL="https://packages.broadcom.com/artifactory/saltproject-generic/onedir/$SALT_VERSION/${_SALT_TARBALL_FILENAME}"
+RUN \
+  --mount=type=cache,target=/root/cache/,sharing=locked \
+<<EOF
+set -e
+cd /root/cache/
+if [ ! -f "$_SALT_TARBALL_FILENAME" ];
+  then curl -LOf "$_SALT_ONEDIR_URL";
+else
+  2>&1 echo "Using cached ${_SALT_TARBALL_FILENAME}"
+fi
+echo "${SALT_TARBALL_SHA512} ${_SALT_TARBALL_FILENAME}" | sha512sum --check
+tar -xavf "${_SALT_TARBALL_FILENAME}" --directory=/opt/
+find /opt/salt/ -maxdepth 1 -type f -executable -exec ln -s {} /usr/local/bin/ \;
 EOF
 
-
 FROM salt-base AS salt-master-base
-RUN --mount=type=cache,target=/var/cache/apk/,sharing=locked \
-  apk add gettext-envsubst openssh-client openssh-keygen rsync gnupg
+RUN \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+<<EOF
+set -e
+mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
+apt-get update
+apt-get install --yes gettext glibc-utils openssh-clients rsync
+EOF
 ARG SUPERVISORD_VERSION='4.2.5'
+ENV PIP_CMD=salt-pip
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
   --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install "supervisor==${SUPERVISORD_VERSION}"
+  "$PIP_CMD" install "supervisor==${SUPERVISORD_VERSION}" && \
+  ln -s /opt/salt/extras-3.10/bin/supervisord /usr/local/bin/
 # To avoid error messag on cleanup keys
 RUN mkdir --parents /var/cache/salt/master/
 RUN mkdir --parents /var/lib/saltbox-bridge/
@@ -64,30 +75,29 @@ EXPOSE 4505 4506 8000
 
 FROM salt-master-base AS salt-master
 LABEL name='saltbox-salt-master'
-LABEL version='3.1'
+LABEL version='4.0'
 LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
   --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install /mnt/saltbox_bridge/
-
+  "$PIP_CMD" install /mnt/saltbox_bridge/
 
 
 FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
-LABEL version='2.1'
+LABEL version='3.0'
 LABEL release='1'
 ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
 ENV SALT_BOX_DEV_MODE=1
 COPY saltbox_bridge/ $SALTBOX_BRIDGE_SRC_PATH
 RUN \
   --mount=type=cache,target=/root/.cache/pip/ \
-  pip3 install --editable "$SALTBOX_BRIDGE_SRC_PATH"
+  "$PIP_CMD" install --editable "$SALTBOX_BRIDGE_SRC_PATH"
 
 
 FROM salt-base AS salt-moc-minion
 LABEL name='saltbox-salt-minion'
-LABEL version='0.9'
+LABEL version='1.0'
 RUN mkdir --parents /etc/salt/minion.d/
 COPY --chmod=755 minion/minion_entrypoint.sh /usr/local/bin/
 ENV SALT_MASTER=salt-master
@@ -96,4 +106,4 @@ ENV SALT_MOC_MINION_LOG_LEVEL=warning
 # How often to rentry on master hostname lookup error (sec)
 ENV SALT_MOC_MINION_RETRY_DNS=30
 ENTRYPOINT ["/usr/local/bin/minion_entrypoint.sh"]
-CMD ["/usr/local/bin/salt-minion"]
+CMD ["salt-minion"]
