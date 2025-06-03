@@ -63,7 +63,7 @@ ENV SALT_MASTER_LOG_LEVEL=warning
 ENV SALT_MINION_LOG_LEVEL=warning
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/usr/local/bin/salt-master"]
-EXPOSE 4505 4506 8000
+EXPOSE 4505 4506
 
 
 FROM salt-master-base AS salt-master
