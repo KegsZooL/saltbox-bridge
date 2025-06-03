@@ -46,18 +46,10 @@ mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
 apt-get update
 apt-get install --yes gettext glibc-utils openssh-clients rsync
 EOF
-ARG SUPERVISORD_VERSION='4.2.5'
 ENV PIP_CMD=salt-pip
-RUN \
-  --mount=type=bind,target=/mnt/,readwrite \
-  --mount=type=cache,target=/root/.cache/pip/ \
-  "$PIP_CMD" install "supervisor==${SUPERVISORD_VERSION}" && \
-  ln -s /opt/salt/extras-3.10/bin/supervisord /usr/local/bin/
 # To avoid error messag on cleanup keys
-RUN mkdir --parents /var/cache/salt/master/
-RUN mkdir --parents /var/lib/saltbox-bridge/
+RUN mkdir --parents /var/cache/salt/master/ /var/lib/saltbox-bridge/
 COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
-COPY master/supervisord.conf /etc/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
 COPY master/states/ /srv/salt_local/
@@ -69,13 +61,13 @@ ENV REDIS_PASSWORD_FILE=
 ENV SALT_MASTER_LOG_LEVEL=warning
 ENV SALT_MINION_LOG_LEVEL=warning
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["/usr/local/bin/supervisord", "--config", "/etc/supervisord.conf"]
+CMD ["/usr/local/bin/salt-master"]
 EXPOSE 4505 4506 8000
 
 
 FROM salt-master-base AS salt-master
 LABEL name='saltbox-salt-master'
-LABEL version='4.0'
+LABEL version='4.1'
 LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
@@ -85,7 +77,7 @@ RUN \
 
 FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
-LABEL version='3.0'
+LABEL version='3.1'
 LABEL release='1'
 ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
 ENV SALT_BOX_DEV_MODE=1
