@@ -15,7 +15,7 @@ RUN \
 set -e
 mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
 apt-get update
-apt-get install --yes curl glibc-pthread openssl procps
+apt-get install --yes curl glibc-pthread lsb-release openssl procps
 EOF
 ARG SALT_VERSION='3006.9'
 ARG SALT_TARBALL_SHA512='26cc4a5377c643ba7a20250040e5d95336398c1060d8102aa016269f360027a46416f2b0f6f2343dc928bbcdb712f00f6618ce6572ba88643b1a32487ae0f03b'
