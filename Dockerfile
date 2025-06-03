@@ -21,6 +21,7 @@ ARG SALT_VERSION='3006.9'
 ARG SALT_TARBALL_SHA512='26cc4a5377c643ba7a20250040e5d95336398c1060d8102aa016269f360027a46416f2b0f6f2343dc928bbcdb712f00f6618ce6572ba88643b1a32487ae0f03b'
 ARG _SALT_TARBALL_FILENAME="salt-${SALT_VERSION}-onedir-linux-x86_64.tar.xz"
 ARG _SALT_ONEDIR_URL="https://packages.broadcom.com/artifactory/saltproject-generic/onedir/$SALT_VERSION/${_SALT_TARBALL_FILENAME}"
+ARG SALT_PATH_PREFIX='/opt/'
 RUN \
   --mount=type=cache,target=/root/cache/,sharing=locked \
 <<EOF
@@ -32,8 +33,8 @@ else
   2>&1 echo "Using cached ${_SALT_TARBALL_FILENAME}"
 fi
 echo "${SALT_TARBALL_SHA512} ${_SALT_TARBALL_FILENAME}" | sha512sum --check
-tar -xavf "${_SALT_TARBALL_FILENAME}" --directory=/opt/
-find /opt/salt/ -maxdepth 1 -type f -executable -exec ln -s {} /usr/local/bin/ \;
+tar -xavf "${_SALT_TARBALL_FILENAME}" --directory="$SALT_PATH_PREFIX"
+find "${SALT_PATH_PREFIX}/salt/" -maxdepth 1 -type f -executable -exec ln -s {} /usr/local/bin/ \;
 EOF
 
 FROM salt-base AS salt-master-base

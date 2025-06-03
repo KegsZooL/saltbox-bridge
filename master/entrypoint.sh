@@ -11,7 +11,8 @@ error() {
 if [ "$SALT_BOX_DEV_MODE" = 1 ]; then
   # Update install
   chown -R "$(id -u):$(id -g)" "$SALTBOX_BRIDGE_SRC_PATH"
-  "$PIP_CMD" install --editable "$SALTBOX_BRIDGE_SRC_PATH"
+  # `salt-pip` overrides target if not passed and it is not work for editable
+  "$PIP_CMD" install --editable "$SALTBOX_BRIDGE_SRC_PATH" --target=''
 fi
 
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
