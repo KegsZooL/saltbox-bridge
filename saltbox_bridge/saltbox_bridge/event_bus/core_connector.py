@@ -146,7 +146,7 @@ class CoreConnector:
 
     def _make_auth_req_message(self) -> AuthRequestMessage:
         sshfs_pubkey = HIERARHY.sshfs_pubkey.open().read().strip()
-        gitfs_pubkey = HIERARHY.gitfs_pubkey.open().read().strip()
+        gitfs_pubkey = HIERARHY.salt_conf_pubkey.open().read().strip()
         return AuthRequestMessage(
             master=self.master_id,
             crypt_pubkey=self.saltbox_crypt.pubkey,

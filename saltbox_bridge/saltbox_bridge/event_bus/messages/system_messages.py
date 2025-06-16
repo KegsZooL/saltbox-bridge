@@ -59,6 +59,7 @@ class SshPubKeyModel(BaseModel):
 
 
 class AuthRequestMessage(BaseMessage):
+    # FIXME Upadte fields
     crypt_pubkey: str = Field(description='Public key for message encryption and verification')
     gitfs_pubkey: SshPubKeyModel = Field(description='OpenSSH formatted public key to authorize GitFS')
     sshfs_pubkey: SshPubKeyModel = Field(description='OpenSSH formatted public key to authorize SSHFS')

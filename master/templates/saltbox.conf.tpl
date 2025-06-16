@@ -10,9 +10,11 @@ redis_ssl_ca_certs: '/etc/redis/certs/ca.crt'
 # Time to live for job returns and grains (sec)
 expire: 604800
 
-gitfs_server: 'sshfs'
-gitfs_port: 1022
+salt_conf_server: 'sshfs'
+salt_conf_port: 1022
 
+sshfs_server: 'sshfs'
+sshfs_port: 1022
 sshfs_sync_on: false
 
 # vi: ft=yaml

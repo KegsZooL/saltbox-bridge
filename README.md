@@ -94,11 +94,17 @@ redis_ssl_ca_certs: '/etc/salt/ssl/redis-ca.crt'
 ## WARNING! `null` value may lead to worse perfomance and intensive storage usage.
 expire: 604800
 
-## Following options will be used to setup SaltStack GitFS
+## Salt.Box SLS files and Salt modules obtaining options.
 ## Address of Salt.Box main server
-gitfs_server: 'saltbox.local'  # CHANGE ME
+salt_conf_server: 'saltbox.local'  # CHANGE ME
 ## Port of Salt.Box main server which sshfs service listen
-gitfs_port: 1022
+salt_conf_port: 1022
+## SSH user name to access files
+salt_conf_user: 'master'
+## Path on REMOTE server where files kept
+salt_conf_source: '/srv/master/salt/'
+## Path on LOCAL server which is in Salt Master `file_root`
+salt_conf_destination: '/srv/saltbox-salt/' 
 
 ## Settings of files replication from Salt.Box sshfs service
 ## Replication should be enabled for remote master

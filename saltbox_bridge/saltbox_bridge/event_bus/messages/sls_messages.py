@@ -13,4 +13,5 @@ class SlsRepo(BaseModel):
 
 
 class ListSlsReposMessage(BaseMessage):
+    # FIXME Fileds
     repos: list[SlsRepo]

@@ -24,25 +24,29 @@ async def sync_repos(
     message: ListSlsReposMessage,
     salt_connector: SaltConnector = Context(),  # noqa: B008
 ) -> Any:
-    # TODO @: True async?
-    # TODO @: lock file
-    # TODO @: Notify Salt.Box Core
+    # TODO (a.karmanov): True async?
+    # TODO (a.karmanov): lock file
+    # TODO (a.karmanov): Notify Salt.Box Core
+    # TODO (a.karmanov): Make message models shared and udpate
 
-    LOGGER.info('Start sync_repos')
+    LOGGER.info('Start saync_saltbox_modules')
     caller = get_salt_caller()
-    repos = [r.dict() for r in message.repos]
     pillar = {
-        'gitfs_repos': repos,
         'ssh_dir': str(HIERARHY.ssh_dir),
-        'sshfs_server': SETTINGS.gitfs_server,
-        'sshfs_port': SETTINGS.gitfs_port,
         'sshfs_sync_on': SETTINGS.sshfs_sync_on,
-        'gitfs_privkey': str(HIERARHY.gitfs_privkey),
-        'gitfs_pubkey': str(HIERARHY.gitfs_pubkey),
-        'saltbox_env': 'base',  # TODO: Customize
+        'sshfs_server': SETTINGS.sshfs_server,
+        'sshfs_port': SETTINGS.sshfs_port,
+        'sshfs_user': SETTINGS.sshfs_user,
+        'sshfs_privkey': str(HIERARHY.sshfs_privkey),
+        'sshfs_pubkey': str(HIERARHY.sshfs_pubkey),
+        'salt_conf_server': SETTINGS.salt_conf_server,
+        'salt_conf_port': SETTINGS.salt_conf_port,
+        'salt_conf_user': SETTINGS.salt_conf_user,
+        'salt_conf_privkey': str(HIERARHY.salt_conf_privkey),
+        'salt_conf_pubkey': str(HIERARHY.salt_conf_pubkey),
     }
-    ret = caller.cmd('state.apply', 'sync_repos', pillar=pillar)
-    LOGGER.info('End sync_repos')
+    ret = caller.cmd('state.apply', 'sync_saltbox', pillar=pillar)
+    LOGGER.info('End sync_saltbox_modules')
     if (errors := get_state_apply_error(ret)) is not None:
         for msg in errors:
             LOGGER.error(msg)

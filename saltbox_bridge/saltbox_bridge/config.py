@@ -44,10 +44,12 @@ class Settings(BaseSettings):
     expire: int | None = 604800
     max_count_of_gather_minions: int = 100
 
-    # Salt master GitFS
-    gitfs_server: str
-    gitfs_port: int = 22
-    gitfs_user: str = 'git'
+    # SSH server to obtain Salt.Box SLS files and modules
+    salt_conf_server: str
+    salt_conf_port: int = 22
+    salt_conf_user: str = 'master'
+    salt_conf_source: Path = Path('/srv/master/salt/')
+    salt_conf_destination: Path = Path('/srv/saltbox-salt/')
 
     # SSHFS replication
     sshfs_sync_on: bool = True
@@ -110,10 +112,12 @@ class Hierarhy:
         # Place to keep SSH client files
         self.ssh_dir: Path = self.var_dir / 'ssh'
         self.gpg_dir: Path = self.var_dir / 'gpg'
-        self.gitfs_privkey: Path = self.ssh_dir / 'saltbox_ed25519'
-        self.gitfs_pubkey: Path = self.ssh_dir / 'saltbox_ed25519.pub'
-        self.sshfs_privkey: Path = self.gitfs_privkey
-        self.sshfs_pubkey: Path = self.gitfs_pubkey
+        # Key pair to obtain Salt.Box SLS files and modules
+        self.salt_conf_privkey: Path = self.ssh_dir / 'salt_conf_ed25519'
+        self.salt_conf_pubkey: Path = self.ssh_dir / 'salt_conf_ed25519.pub'
+        # Key pair to sync shared file
+        self.sshfs_privkey: Path = self.ssh_dir / 'sshfs_ed25519'
+        self.sshfs_pubkey: Path = self.ssh_dir / 'sshfs_ed25519.pub'
 
         self._make_dirs()
         self._ensure_keys()
@@ -129,7 +133,7 @@ class Hierarhy:
         self.ssh_dir.chmod(self.SSH_DIR_MODE)
 
     def _ensure_keys(self) -> None:
-        ensure_ssh_key(self.gitfs_privkey)
+        ensure_ssh_key(self.salt_conf_privkey)
         ensure_ssh_key(self.sshfs_privkey)
 
 
