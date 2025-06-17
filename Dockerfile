@@ -70,7 +70,7 @@ EXPOSE 4505 4506
 
 FROM salt-master-base AS salt-master
 LABEL name='saltbox-salt-master'
-LABEL version='4.1'
+LABEL version='4.2'
 LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
@@ -83,10 +83,15 @@ LABEL name='saltbox-salt-master-dev'
 LABEL version='3.1'
 LABEL release='1'
 ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
-ENV SALT_BOX_DEV_MODE=1
-COPY saltbox_bridge/ $SALTBOX_BRIDGE_SRC_PATH
+COPY saltbox_bridge/ "$SALTBOX_BRIDGE_SRC_PATH"
 RUN --mount=type=cache,target=/root/.cache/pip/ \
-  "$PIP_CMD" install --editable "$SALTBOX_BRIDGE_SRC_PATH" --target=''
+  "$PIP_CMD" install \
+  --requirement "${SALTBOX_BRIDGE_SRC_PATH}/requirements.txt" \
+  --target=''
+ENV SALTBOX_DEV_MODE=1
+# Respective repository should be mounted
+VOLUME /root/saltbox-bridge-messages/
+ENV SALTBOX_BRIDGE_MESSAGES_SRC_PATH=/root/saltbox-bridge-messages/
 
 
 FROM salt-base AS salt-moc-minion

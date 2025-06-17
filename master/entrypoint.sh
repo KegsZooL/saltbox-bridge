@@ -2,17 +2,23 @@
 # shellcheck disable=SC2016
 #
 set -e
+trap '[ $? -eq 0 ] && exit 0 || echo "ERROR on $0 line ${LINENO}"' EXIT
+
 
 error() {
   >&2 echo "$1"
   exit 1
 }
 
-if [ "$SALT_BOX_DEV_MODE" = 1 ]; then
+if [ "$SALTBOX_DEV_MODE" = 1 ]; then
   # Update install
   chown -R "$(id -u):$(id -g)" "$SALTBOX_BRIDGE_SRC_PATH"
   # `salt-pip` overrides target if not passed and it is not work for editable
-  "$PIP_CMD" install --editable "$SALTBOX_BRIDGE_SRC_PATH" --target=''
+  "$PIP_CMD" \
+      install --editable \
+      "$SALTBOX_BRIDGE_SRC_PATH" \
+      "$SALTBOX_BRIDGE_MESSAGES_SRC_PATH" \
+      --target=''
 fi
 
 [ -z "$REDIS_USERNAME" ] && error 'Missing REDIS_USERNAME value'
@@ -34,4 +40,5 @@ envsubst '$REDIS_USERNAME $REDIS_PASSWORD' \
   < /root/templates/saltbox.conf.tpl \
   > /etc/salt/saltbox
 
+echo "${0} args to eval: ${*}"
 exec "$@"

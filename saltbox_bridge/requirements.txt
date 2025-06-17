@@ -1,7 +1,7 @@
-redis~=5.2.0
 faststream[redis]==0.5.34
-pydantic==2.8.2
 pydantic-settings==2.2.1
+pydantic==2.8.2
 python-gnupg==0.4.8
+redis~=5.2.0
 # Package depends on SaltStack but usually it unwanted to install `salt` as requirement
 #salt==3006.9

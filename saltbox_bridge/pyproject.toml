@@ -30,7 +30,7 @@ build-backend = 'setuptools.build_meta'
 include = ['saltbox_bridge', 'saltbox_bridge.*']
 
 [tool.setuptools.dynamic]
-dependencies = { file = ['requirements.txt'] }
+dependencies = { file = ['requirements.txt', 'local_requirements.txt'] }
 version = { attr = 'saltbox_bridge.__version__' }
 
 [tool.ruff]

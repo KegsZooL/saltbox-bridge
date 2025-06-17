@@ -20,6 +20,7 @@ htmlcov/
 # Editors
 /.vscode
 /.idea
+*.vim
 
 # Other
 /_*
