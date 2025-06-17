@@ -91,7 +91,7 @@ RUN --mount=type=cache,target=/root/.cache/pip/ \
 ENV SALTBOX_DEV_MODE=1
 # Respective repository should be mounted
 VOLUME /root/saltbox-bridge-messages/
-ENV SALTBOX_BRIDGE_MESSAGES_SRC_PATH=/root/saltbox-bridge-messages/
+ENV SALTBOX_BRIDGE_MESSAGES_SRC_PATH=/mnt/saltbox-bridge-messages/
 
 
 FROM salt-base AS salt-moc-minion

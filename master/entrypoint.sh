@@ -16,8 +16,8 @@ if [ "$SALTBOX_DEV_MODE" = 1 ]; then
   # `salt-pip` overrides target if not passed and it is not work for editable
   "$PIP_CMD" \
       install --editable \
-      "$SALTBOX_BRIDGE_SRC_PATH" \
       "$SALTBOX_BRIDGE_MESSAGES_SRC_PATH" \
+      "$SALTBOX_BRIDGE_SRC_PATH" \
       --target=''
 fi
 
