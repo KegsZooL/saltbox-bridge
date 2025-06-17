@@ -8,7 +8,6 @@ from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 
 from saltbox_bridge.config import HIERARHY, SETTINGS
-from saltbox_bridge.event_bus.messages.sls_messages import ListSlsReposMessage
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.salt_connector import SaltConnector, get_salt_caller, get_state_apply_error
 
@@ -21,7 +20,7 @@ router_not_auth = RedisRouter()
 
 @router.subscriber('sync_repos')
 async def sync_repos(
-    message: ListSlsReposMessage,
+    message: Any,
     salt_connector: SaltConnector = Context(),  # noqa: B008
 ) -> Any:
     # TODO (a.karmanov): True async?
