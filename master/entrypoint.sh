@@ -13,10 +13,17 @@ error() {
 if [ "$SALTBOX_DEV_MODE" = 1 ]; then
   # Update install
   chown -R "$(id -u):$(id -g)" "$SALTBOX_BRIDGE_SRC_PATH"
+
+  sb_messages_copy_dir='/root/saltbox-bridge-messages/'
+  mkdir --parents "$sb_messages_copy_dir"
+  cd "$SALTBOX_BRIDGE_MESSAGES_SRC_PATH"
+  stow --target "$sb_messages_copy_dir" --ignore '^build$' --ignore '.*\.egg-info' .
+  cd -
+
   # `salt-pip` overrides target if not passed and it is not work for editable
   "$PIP_CMD" \
       install \
-      --editable "$SALTBOX_BRIDGE_MESSAGES_SRC_PATH" \
+      --editable "$sb_messages_copy_dir" \
       --editable "$SALTBOX_BRIDGE_SRC_PATH" \
       --target=''
 fi
