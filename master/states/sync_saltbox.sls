@@ -1,5 +1,5 @@
 {% set salt_src = pillar.get('salt_conf_source', '/srv/master/salt/') %}
-{% set salt_dst = pillar.get('salt_conf_destination', '/srv/saltbox-salt/') %}
+{% set salt_dst = pillar.get('salt_conf_destination', '/srv/saltbox_salt/') %}
 {%- set ssh_dir = pillar.get('ssh_dir', '/var/lib/saltbox-bridge/ssh/') %}
 
 {% set ssh_conf = ssh_dir + '/ssh.conf' %}

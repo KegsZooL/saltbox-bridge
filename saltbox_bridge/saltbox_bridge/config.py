@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     salt_conf_port: int = 22
     salt_conf_user: str = 'master'
     salt_conf_source: Path = Path('/srv/master/salt/')
-    salt_conf_destination: Path = Path('/srv/saltbox-salt/')
+    salt_conf_destination: Path = Path('/srv/saltbox_salt/')
 
     # SSHFS replication
     sshfs_sync_on: bool = True

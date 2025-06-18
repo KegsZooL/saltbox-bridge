@@ -3,7 +3,7 @@ module_dirs:
 file_root:
   base:
     - /srv/salt/
-    - /srv/saltbox-salt/
+    - /srv/saltbox_salt/
 file_ignore_glob:
   - '*/.git/*'
   - '*.pyc'

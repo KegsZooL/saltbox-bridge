@@ -6,17 +6,17 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from faststream.redis import RedisBroker, RedisMessage
-
-from saltbox_bridge.config import HIERARHY
-from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
-from saltbox_bridge.event_bus.messages.base_messages import BaseMessage
-from saltbox_bridge.event_bus.messages.system_messages import (
+from saltbox_bridge_messages import (
     AuthRequestMessage,
-    AuthResponceMessage,
+    AuthResponseMessage,
     MasterStatus,
     MasterStatusMessage,
     SshPubKeyModel,
 )
+
+from saltbox_bridge.config import HIERARHY
+from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
+from saltbox_bridge.event_bus.messages.base_messages import BaseMessage
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 
@@ -60,7 +60,7 @@ class CoreConnector:
         async with broker as br:
             await br.publish(message=message, channel=f'master_{message_tag}')
 
-    async def send_messge_and_wait_responce(
+    async def send_messge_and_wait_response(
         self,
         message: BaseMessage,
         message_tag: str,
@@ -85,7 +85,7 @@ class CoreConnector:
 
     async def update_master_status(self) -> None:
         master_status: MasterStatusMessage = MasterStatusMessage(
-            **await self.send_messge_and_wait_responce(
+            **await self.send_messge_and_wait_response(
                 message=BaseMessage(master=self.master_id), message_tag='status', is_need_auth=False
             )
         )
@@ -96,8 +96,8 @@ class CoreConnector:
         self.is_pubkey_set = master_status.is_pubkey_set
 
     async def auth_master(self) -> None:
-        master_auth = AuthResponceMessage(
-            **await self.send_messge_and_wait_responce(
+        master_auth = AuthResponseMessage(
+            **await self.send_messge_and_wait_response(
                 message=self._make_auth_req_message(),
                 message_tag='auth',
                 is_need_auth=False,
