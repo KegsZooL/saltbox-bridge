@@ -10,8 +10,8 @@ from faststream.redis.message import RedisMessage
 from faststream.types import AsyncFunc, AsyncFuncAny
 from faststream.utils.context.repository import context
 from pydantic import BaseModel
+from saltbox_bridge_messages import BridgeMessageBase
 
-from saltbox_bridge.event_bus.messages.base_messages import AbstractMessage
 from saltbox_bridge.exceptions import CreateSignError
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 
@@ -55,7 +55,7 @@ class MastersAuthMiddleware(BaseMiddleware):
         #     return None
 
         try:
-            message: AbstractMessage = AbstractMessage(**await msg.decode())  # type: ignore
+            message = BridgeMessageBase(**await msg.decode())  # type: ignore[arg-type]
         except Exception as e:
             error = f'Failed to decode message:\n{msg}\n{e}'
             LOGGER.error(error)

@@ -8,9 +8,9 @@ from redis.asyncio import Redis
 from salt.client import Caller, LocalClient  # type: ignore
 from salt.config import minion_config  # type: ignore
 from salt.exceptions import SaltException  # type: ignore
+from saltbox_bridge_messages import SaltTgtType
 
 from saltbox_bridge.exceptions import CreateJobError
-from saltbox_bridge.utils.types import SaltTgtType
 
 LOGGER = logging.getLogger(__name__)
 

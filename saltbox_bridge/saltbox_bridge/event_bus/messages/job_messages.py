@@ -3,16 +3,14 @@ from __future__ import annotations
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
-
-from saltbox_bridge.event_bus.messages.base_messages import BaseMessage
-from saltbox_bridge.utils.types import SaltTgtType
+from saltbox_bridge_messages import BridgeMessageBase, SaltTgtType
 
 
-class NewJobIneMessage(BaseMessage):
+class NewJobIneMessage(BridgeMessageBase):
     hash_name: str
 
 
-class NewJobSyncIneMessage(BaseMessage):
+class NewJobSyncIneMessage(BridgeMessageBase):
     tgt: str
     tgt_type: SaltTgtType
     fun: str
@@ -29,7 +27,7 @@ class JobReturn(BaseModel):
     model_config = ConfigDict(extra='allow')
 
 
-class JobSyncOutMessage(BaseMessage):
+class JobSyncOutMessage(BridgeMessageBase):
     jid: str
     tgt: str
     tgt_type: SaltTgtType

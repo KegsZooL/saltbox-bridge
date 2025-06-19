@@ -9,6 +9,7 @@ from faststream.redis import RedisBroker, RedisMessage
 from saltbox_bridge_messages import (
     AuthRequestMessage,
     AuthResponseMessage,
+    BridgeMessageBase,
     MasterStatus,
     MasterStatusMessage,
     SshPubKeyModel,
@@ -16,7 +17,6 @@ from saltbox_bridge_messages import (
 
 from saltbox_bridge.config import HIERARHY
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
-from saltbox_bridge.event_bus.messages.base_messages import BaseMessage
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 
@@ -46,7 +46,7 @@ class CoreConnector:
 
     async def send_messagee(
         self,
-        message: BaseMessage,
+        message: BridgeMessageBase,
         message_tag: str,
         broker: RedisBroker | None = None,
         is_need_auth: bool = False,
@@ -62,7 +62,7 @@ class CoreConnector:
 
     async def send_messge_and_wait_response(
         self,
-        message: BaseMessage,
+        message: BridgeMessageBase,
         message_tag: str,
         response_timeout: float = 3.0,
         broker: RedisBroker | None = None,
@@ -86,7 +86,7 @@ class CoreConnector:
     async def update_master_status(self) -> None:
         master_status: MasterStatusMessage = MasterStatusMessage(
             **await self.send_messge_and_wait_response(
-                message=BaseMessage(master=self.master_id), message_tag='status', is_need_auth=False
+                message=BridgeMessageBase(master=self.master_id), message_tag='status', is_need_auth=False
             )
         )
 

@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from faststream import Context
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
+from saltbox_bridge_messages import CoreEmptyMessage
 
 from saltbox_bridge.config import HIERARHY, SETTINGS
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
@@ -20,7 +21,7 @@ router_not_auth = RedisRouter()
 
 @router.subscriber('sync_repos')
 async def sync_repos(
-    message: Any,
+    message: CoreEmptyMessage,
     salt_connector: SaltConnector = Context(),  # noqa: B008
 ) -> Any:
     # TODO (a.karmanov): True async?

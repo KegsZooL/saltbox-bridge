@@ -5,9 +5,9 @@ import re
 from typing import Any
 
 from salt.utils import json  # type: ignore
+from saltbox_bridge_messages import BridgeMinionGrainsMessage
 
 from saltbox_bridge.config import SETTINGS
-from saltbox_bridge.event_bus.messages.minion_messages import GrainsOutMessage
 from saltbox_bridge.exceptions import StopProcessing
 from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler
 
@@ -53,7 +53,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
         if not grains:
             return
 
-        message = GrainsOutMessage(master=self.salt_opts['salt_box_master_id'], grains=grains)
+        message = BridgeMinionGrainsMessage(master=self.salt_opts['salt_box_master_id'], grains=grains)
         await self.send_message(message=message, message_tag='grains')
 
 

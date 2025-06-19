@@ -6,9 +6,13 @@ from typing import Annotated
 from faststream import Context
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
+from saltbox_bridge_messages import (
+    BridgeGatherMinionsResponse,
+    CoreGatherMinionsRequest,
+    GatheredMinionSchema,
+)
 
 from saltbox_bridge.config import SETTINGS
-from saltbox_bridge.event_bus.messages.minion_messages import GatherMinionsInMessage, GatherMinionsOutMessage, Minion
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.salt_connector import SaltConnector
 
@@ -22,17 +26,15 @@ router_not_auth = RedisRouter()
 
 @router.subscriber('gather_minions')
 async def gather_minions(
-    message: GatherMinionsInMessage,
+    message: CoreGatherMinionsRequest,
     salt_master: str = Context(),
     salt_connector: SaltConnector = Context(),  # noqa: B008
-) -> GatherMinionsOutMessage:
+) -> BridgeGatherMinionsResponse:
     minions: list[str] = await salt_connector.gather_minions(tgt=message.tgt, tgt_type=message.tgt_type)
-
-    result = GatherMinionsOutMessage(
-        count=len(minions),
-        minions=[
-            Minion(minion_id=minion, master=salt_master) for minion in minions[: SETTINGS.max_count_of_gather_minions]
-        ],
+    minions_slice = minions[: SETTINGS.max_count_of_gather_minions]
+    result = BridgeGatherMinionsResponse(
+        count=len(minions_slice),
+        minions=[GatheredMinionSchema(minion_id=minion, master=salt_master) for minion in minions_slice],
         master=salt_master,
     )
 
