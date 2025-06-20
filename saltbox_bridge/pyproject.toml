@@ -1,7 +1,7 @@
 [project]
 dynamic = [ 'dependencies', 'version' ]
 name = 'saltbox-bridge'
-requires-python = '>=3.10, <3.10.17'  # 3.10.17 seems broken for 2025-04-09
+requires-python = '>=3.10'
 license = 'Apache-2.0'
 description = 'salt.box connector to salt master, service module'
 readme = 'README.md'
@@ -36,9 +36,6 @@ version = { attr = 'saltbox_bridge.__version__' }
 [tool.ruff]
 target-version = 'py310'
 line-length = 120
-# namespace-packages = ['engines', 'runners', 'saltbox_bridge']
-# src = ['engines', 'runners', 'saltbox_bridge']
-# src = ['saltbox_bridge']
 extend-exclude = ['docs', 'env', '__pycache__', '*.egg', 'htmlcov']
 respect-gitignore = true
 unsafe-fixes = false

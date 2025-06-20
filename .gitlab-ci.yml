@@ -38,6 +38,7 @@ Build salt-master image for branch:
   before_script:
     - apk add git
     - pip3 install -e ./saltbox_bridge[dev]
+    - python -V
   cache:
     paths:
       - '.cache/pip/'
