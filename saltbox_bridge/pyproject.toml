@@ -16,10 +16,10 @@ Repository = 'https://dev.saltbox.pro/salt.box'
 
 [project.optional-dependencies]
 dev = [
-  "mypy>=1.15.0",
-  "pre-commit>=4.2.0",
-  "ruff>=0.11.5",
-  "types-redis",
+  'mypy>=1.15.0',
+  'pre-commit>=4.2.0',
+  'ruff>=0.11.5',
+  'types-redis',
 ]
 
 [build-system]
@@ -88,13 +88,13 @@ multiline-quotes = 'single'
 convention = 'google'
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.*" = ["S101", "DTZ", "EM101", "RUF012", "E712"]
-"**/__init__.py" = ["I002"]
+'tests/**/*.*' = ['S101', 'DTZ', 'EM101', 'RUF012', 'E712']
+'**/__init__.py' = ['I002']
 # '*/models.py' = ['UP007']
 # '*/schemas.py' = ['UP007']
 
 [tool.ruff.lint.isort]
-required-imports = ["from __future__ import annotations"]
+required-imports = ['from __future__ import annotations']
 known-first-party = [
   # 'engines',
   # 'runners',
@@ -107,13 +107,13 @@ max-complexity = 10
 
 [tool.mypy]
 check_untyped_defs = true
-plugins = ["pydantic.mypy"]
-python_version = "3.10"
+plugins = ['pydantic.mypy']
+python_version = '3.10'
 ignore_missing_imports = false
 color_output = true
 warn_redundant_casts = true
 warn_unused_configs = true
-exclude = ["venv/", ".venv/", "tests/*", "engines/saltbox_delator.py"]
+exclude = ['venv/', '.venv/', 'tests/*', 'engines/saltbox_delator.py']
 strict = true
 disallow_any_generics = false
 disallow_incomplete_defs = true
