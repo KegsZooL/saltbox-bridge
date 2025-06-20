@@ -47,7 +47,7 @@ RUN \
 set -e
 mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
 apt-get update
-apt-get install --yes gettext glibc-utils openssh-clients rsync
+apt-get install --yes gettext git glibc-utils openssh-clients rsync
 EOF
 ENV PIP_CMD=salt-pip
 # To avoid error messag on cleanup keys
