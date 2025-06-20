@@ -82,15 +82,6 @@ FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
 LABEL version='3.1'
 LABEL release='1'
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-<<EOF
-set -e
-mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
-apt-get update
-apt-get install --yes stow
-EOF
 ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
 COPY saltbox_bridge/ "$SALTBOX_BRIDGE_SRC_PATH"
 RUN --mount=type=cache,target=/root/.cache/pip/ \
