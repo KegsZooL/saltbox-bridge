@@ -94,15 +94,15 @@ VOLUME /mnt/saltbox-bridge-messages/
 ENV SALTBOX_BRIDGE_MESSAGES_SRC_PATH=/mnt/saltbox-bridge-messages/
 
 
-FROM salt-base AS salt-moc-minion
+FROM salt-base AS salt-mock-minion
 LABEL name='saltbox-salt-minion'
 LABEL version='1.0'
 RUN mkdir --parents /etc/salt/minion.d/
 COPY --chmod=755 minion/minion_entrypoint.sh /usr/local/bin/
 ENV SALT_MASTER=salt-master
-ENV MINION_ID_PREFIX=moc-minion
-ENV SALT_MOC_MINION_LOG_LEVEL=warning
+ENV MINION_ID_PREFIX=mock-minion
+ENV SALT_MOCK_MINION_LOG_LEVEL=warning
 # How often to rentry on master hostname lookup error (sec)
-ENV SALT_MOC_MINION_RETRY_DNS=30
+ENV SALT_MOCK_MINION_RETRY_DNS=30
 ENTRYPOINT ["/usr/local/bin/minion_entrypoint.sh"]
 CMD ["salt-minion"]
