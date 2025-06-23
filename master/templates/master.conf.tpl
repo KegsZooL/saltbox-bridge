@@ -1,6 +1,6 @@
 module_dirs:
   - /srv/salt_extmod/
-file_root:
+file_roots:
   base:
     - /srv/salt/
     - /srv/saltbox_salt/
