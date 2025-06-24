@@ -13,8 +13,7 @@ from saltbox_bridge.event_bus.subscribers.minion_subscribers import router as mi
 from saltbox_bridge.event_bus.subscribers.minion_subscribers import router_not_auth as minion_router_not_auth
 from saltbox_bridge.event_bus.subscribers.pillar_subscribers import router as pillar_router
 from saltbox_bridge.event_bus.subscribers.pillar_subscribers import router_not_auth as pillar_router_not_auth
-from saltbox_bridge.event_bus.subscribers.sls_subscribers import router as sls_router
-from saltbox_bridge.event_bus.subscribers.sls_subscribers import router_not_auth as sls_router_not_auth
+from saltbox_bridge.event_bus.subscribers import system_subscribers
 
 LOGGER = logging.getLogger(__name__)
 Message = Annotated[RedisMessage, Context()]
@@ -29,6 +28,6 @@ router.include_routers(
     minion_router_not_auth,
     pillar_router,
     pillar_router_not_auth,
-    sls_router,
-    sls_router_not_auth,
+    system_subscribers.router,
+    system_subscribers.router_not_auth,
 )

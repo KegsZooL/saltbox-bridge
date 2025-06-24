@@ -32,6 +32,6 @@ def cleanup_expired_jobs() -> int:
         LOGGER.info('Running expired job records cleanup')
         deleted_jobs_num = redis_client.zremrangebyscore('jobs', min=0.0, max=expiration_time)
         LOGGER.info('%i expired job records deleted', deleted_jobs_num)
-        return deleted_jobs_num  # type: ignore[return-value]
+        return deleted_jobs_num
     except ConnectionError as err:
         raise CommandExecutionError(err) from err
