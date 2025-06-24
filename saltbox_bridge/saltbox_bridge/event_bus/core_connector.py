@@ -23,10 +23,6 @@ from saltbox_bridge.utils.gpg import SaltBoxCrypt
 LOGGER = logging.getLogger(__name__)
 
 
-class ConnectionFail(Exception):
-    pass
-
-
 # TODO: Only Auth message
 #
 #    Auth ->
@@ -36,12 +32,13 @@ class ConnectionFail(Exception):
 
 
 class CoreConnector:
+    CONNECT_RETRY_INTERVAL_SEC = 10
+
     def __init__(self, master_id: str, saltbox_crypt: SaltBoxCrypt):
-        self.master_id: str = master_id
-        self.saltbox_crypt: SaltBoxCrypt = saltbox_crypt
-        self.master_status: MasterStatus = MasterStatus.new
-        self.is_pubkey_set: bool = False
-        self.is_connection_success: bool = False
+        self.master_id = master_id
+        self.saltbox_crypt = saltbox_crypt
+        self.master_status = MasterStatus.new
+        self.is_connected = False
         self.dt_last_check: datetime | None = None
 
     async def send_messagee(
@@ -84,65 +81,11 @@ class CoreConnector:
             return await response.decode() if response else None
 
     async def update_master_status(self) -> None:
-        master_status: MasterStatusMessage = MasterStatusMessage(
-            **await self.send_messge_and_wait_response(
-                message=BridgeMessageBase(master=self.master_id), message_tag='status', is_need_auth=False
-            )
-        )
-
-        LOGGER.info(master_status)
-
+        msg = BridgeMessageBase(master=self.master_id)
+        ret = await self.send_messge_and_wait_response(message=msg, message_tag='status', is_need_auth=False)
+        master_status: MasterStatusMessage = MasterStatusMessage(**ret)
+        LOGGER.info('Salt.Box status of master is "%s"', master_status)
         self.master_status = master_status.status
-        self.is_pubkey_set = master_status.is_pubkey_set
-
-    async def auth_master(self) -> None:
-        master_auth = AuthResponseMessage(
-            **await self.send_messge_and_wait_response(
-                message=self._make_auth_req_message(),
-                message_tag='auth',
-                is_need_auth=False,
-            )
-        )
-
-        if master_auth.crypt_pubkey:
-            self.saltbox_crypt.save_pubkey_core(key_data=master_auth.crypt_pubkey)
-
-        await self.update_master_status()
-
-    async def check_connection(self, try_to_fix: bool = True, silent: bool = True) -> None:
-        await self.auth_master()
-        self.is_connection_success = False
-
-        if self.master_status != MasterStatus.accepted:
-            msg = 'Master status is not accepted. Waiting...'
-
-            self.dt_last_check = datetime.now(timezone.utc)
-
-            if silent:
-                LOGGER.warning(msg)
-                return
-            else:
-                raise ConnectionFail(msg)
-
-        self.dt_last_check = datetime.now(timezone.utc)
-        self.is_connection_success = True
-        return None
-
-    async def wait_success_connection(self, try_to_fix: bool = True, ttl: int = 900) -> None:
-        dt_start_check: datetime = datetime.now(timezone.utc)
-
-        LOGGER.info('Waiting for connection...')
-
-        while not self.is_connection_success:
-            if datetime.now(timezone.utc) - dt_start_check > timedelta(seconds=ttl):
-                LOGGER.warning('Connection timed out. Waiting...')
-                return
-
-            await self.check_connection(try_to_fix=try_to_fix)
-            await sleep(10)
-
-        LOGGER.info('Connection to core succeeded.')
-        return
 
     def _make_auth_req_message(self) -> AuthRequestMessage:
         sshfs_pubkey = HIERARHY.sshfs_pubkey.open().read().strip()
@@ -153,3 +96,44 @@ class CoreConnector:
             salt_conf_pubkey=SshPubKeyModel.from_str(salt_conf_pubkey),
             sshfs_pubkey=SshPubKeyModel.from_str(sshfs_pubkey),
         )
+
+    async def _auth(self) -> None:
+        ret = await self.send_messge_and_wait_response(
+            message=self._make_auth_req_message(),
+            message_tag='auth',
+            is_need_auth=False,
+        )
+        master_auth = AuthResponseMessage(**ret)
+
+        if master_auth.crypt_pubkey:
+            self.saltbox_crypt.save_pubkey_core(key_data=master_auth.crypt_pubkey)
+
+        await self.update_master_status()
+
+    async def _connect(self) -> bool:
+        await self._auth()
+
+        if self.master_status != MasterStatus.accepted:
+            msg = 'Master status is not accepted. Waiting...'
+            self.dt_last_check = datetime.now(timezone.utc)
+            LOGGER.warning(msg)
+            return False
+
+        self.dt_last_check = datetime.now(timezone.utc)
+        return True
+
+    async def wait_success_connection(self, timeout: int) -> None:
+        dt_start_check: datetime = datetime.now(timezone.utc)
+
+        LOGGER.info('Waiting for connection...')
+
+        while not self.is_connected:
+            if datetime.now(timezone.utc) - dt_start_check > timedelta(seconds=timeout):
+                LOGGER.warning('Connection timed out, give up now')
+                return
+
+            self.is_connected = await self._connect()
+            await sleep(self.CONNECT_RETRY_INTERVAL_SEC)
+
+        LOGGER.info('Connection to Core succeed')
+        return

@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import logging
 
-from saltbox_bridge.bridge import start as start_bridge
+from saltbox_bridge.delator_service import start as start_delator
 
 __opts__: dict
 __salt__: dict
@@ -53,4 +53,4 @@ def start() -> None:
     """
 
     LOGGER.info('Starting salt.box redis bridge as an engine')
-    start_bridge(salt_opts=__opts__)  # noqa: F821
+    start_delator(salt_opts=__opts__)  # noqa: F821

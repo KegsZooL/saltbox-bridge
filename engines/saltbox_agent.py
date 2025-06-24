@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 
-from saltbox_bridge.service import start as start_service
+from saltbox_bridge.agent_service import start as start_agent
 
 __opts__: dict
 __salt__: dict
@@ -35,4 +35,4 @@ def start() -> None:
     """Start a salt.box service."""
 
     LOGGER.info('Starting salt.box service as an engine')
-    start_service(salt_opts=__opts__)  # noqa: F821
+    start_agent(salt_opts=__opts__)  # noqa: F821

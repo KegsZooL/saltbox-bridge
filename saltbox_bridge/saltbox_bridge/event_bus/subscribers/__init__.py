@@ -7,13 +7,13 @@ from faststream import Context
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 
+from saltbox_bridge.event_bus.subscribers import system_subscribers
 from saltbox_bridge.event_bus.subscribers.job_subscribers import router as job_router
 from saltbox_bridge.event_bus.subscribers.job_subscribers import router_not_auth as job_router_not_auth
 from saltbox_bridge.event_bus.subscribers.minion_subscribers import router as minion_router
 from saltbox_bridge.event_bus.subscribers.minion_subscribers import router_not_auth as minion_router_not_auth
 from saltbox_bridge.event_bus.subscribers.pillar_subscribers import router as pillar_router
 from saltbox_bridge.event_bus.subscribers.pillar_subscribers import router_not_auth as pillar_router_not_auth
-from saltbox_bridge.event_bus.subscribers import system_subscribers
 
 LOGGER = logging.getLogger(__name__)
 Message = Annotated[RedisMessage, Context()]

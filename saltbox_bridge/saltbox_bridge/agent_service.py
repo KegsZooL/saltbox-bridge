@@ -47,9 +47,9 @@ async def _async_start(
     saltbox_crypt = SaltBoxCrypt(master_id=salt_master, can_gen_new_key=True)
     core_connector = CoreConnector(master_id=salt_master, saltbox_crypt=saltbox_crypt)
 
-    await core_connector.wait_success_connection(try_to_fix=True, ttl=900)
-    if not core_connector.is_connection_success:
-        msg = 'Failed to connect to Core service'
+    await core_connector.wait_success_connection(timeout=900)
+    if not core_connector.is_connected:
+        msg = 'Failed to connect Bridge Agent to Core service'
         raise CoreConnectionError(msg)
 
     @asynccontextmanager
@@ -98,8 +98,4 @@ def start(
     root_logger.handlers = []
     root_logger.addHandler(handler)
 
-    asyncio.run(
-        _async_start(
-            salt_opts=salt_opts,
-        )
-    )
+    asyncio.run(_async_start(salt_opts=salt_opts))

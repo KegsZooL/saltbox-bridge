@@ -68,9 +68,9 @@ class SaltBridge:
         context.set_global('core_connector', core_connector)
         context.set_global('master_id', master_id)
 
-        await core_connector.wait_success_connection(try_to_fix=True, ttl=900)
-        if not core_connector.is_connection_success:
-            msg = 'Failed to connect to Core service'
+        await core_connector.wait_success_connection(timeout=900)
+        if not core_connector.is_connected:
+            msg = 'Failed to connect Bridge Delator to Core service'
             raise CoreConnectionError(msg)
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
