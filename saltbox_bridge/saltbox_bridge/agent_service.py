@@ -47,7 +47,7 @@ async def _async_start(
     saltbox_crypt = SaltBoxCrypt(master_id=salt_master, can_gen_new_key=True)
     core_connector = CoreConnector(master_id=salt_master, saltbox_crypt=saltbox_crypt)
 
-    await core_connector.wait_success_connection(timeout=900)
+    await core_connector.wait_success_connection(timeout=90)
     if not core_connector.is_connected:
         msg = 'Failed to connect Bridge Agent to Core service'
         raise CoreConnectionError(msg)
