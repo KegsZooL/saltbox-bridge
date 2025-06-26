@@ -3,5 +3,3 @@ pydantic-settings~=2.9.1
 pydantic~=2.11.7
 python-gnupg==0.4.8
 redis~=5.2.0
-# Package depends on SaltStack but usually it unwanted to install `salt` as requirement
-#salt==3006.9

@@ -37,7 +37,7 @@ Build salt-master image for branch:
   image: python:3.10-alpine
   before_script:
     - apk add git
-    - pip3 install -e ./saltbox_bridge[dev]
+    - pip3 install -e ./saltbox_bridge[dev,salt]
     - python -V
   cache:
     paths:
