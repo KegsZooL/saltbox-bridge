@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from asyncio import sleep
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
 from faststream.redis import RedisBroker, RedisMessage
@@ -17,7 +17,9 @@ from saltbox_bridge_messages import (
 from saltbox_bridge.config import HIERARHY
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
+from saltbox_bridge.exceptions import CoreConnectionTimeoutError
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
+from saltbox_bridge.utils.system import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -98,25 +100,25 @@ class CoreConnector:
 
         if self.master_status != MasterStatus.accepted:
             msg = 'Master status is not accepted. Waiting...'
-            self.dt_last_check = datetime.now(timezone.utc)
+            self.dt_last_check = utc_now()
             logger.warning(msg)
             return False
 
-        self.dt_last_check = datetime.now(timezone.utc)
+        self.dt_last_check = utc_now()
         return True
 
     async def wait_success_connection(self, timeout: int) -> None:
-        dt_start_check: datetime = datetime.now(timezone.utc)
+        dt_start_check = utc_now()
+        timeout_delta = timedelta(seconds=timeout)
 
-        logger.info('Waiting for connection...')
+        logger.info('Waiting for connection to Core...')
 
         while not self.is_connected:
-            if datetime.now(timezone.utc) - dt_start_check > timedelta(seconds=timeout):
-                logger.warning('Connection timed out, give up now')
-                return
+            if utc_now() - dt_start_check > timeout_delta:
+                msg = 'Connection to Core timed out, give up now'
+                raise CoreConnectionTimeoutError(msg)
 
             self.is_connected = await self._connect()
             await sleep(self.CONNECT_RETRY_INTERVAL_SEC)
 
         logger.info('Connection to Core succeed')
-        return

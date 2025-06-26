@@ -17,8 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
-import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -31,12 +29,10 @@ from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
 
 # from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.event_bus.subscribers import router
-from saltbox_bridge.exceptions import CoreConnectionError
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 from saltbox_bridge.utils.salt_connector import SaltConnector
 
-LOG_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 LOGGER = logging.getLogger(__name__)
 
 
@@ -47,10 +43,7 @@ async def _async_start(
     saltbox_crypt = SaltBoxCrypt(master_id=salt_master, can_gen_new_key=True)
     core_connector = CoreConnector(master_id=salt_master, saltbox_crypt=saltbox_crypt)
 
-    await core_connector.wait_success_connection(timeout=90)
-    if not core_connector.is_connected:
-        msg = 'Failed to connect Bridge Agent to Core service'
-        raise CoreConnectionError(msg)
+    await core_connector.wait_success_connection(timeout=900)
 
     @asynccontextmanager
     async def lifespan(context: ContextRepo) -> AsyncIterator:
@@ -86,16 +79,5 @@ def start(
 ) -> None:
     if salt_opts is None:
         salt_opts = salt.config.client_config('/etc/salt/master')
-
-    log_level: str = os.getenv('SALT_BRIDGE_SERVICE_LOG_LEVEL', 'INFO')
-
-    logging.basicConfig()
-    formatter = logging.Formatter(LOG_FORMAT)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(log_level)
-    handler.setFormatter(formatter)
-    root_logger = logging.getLogger()
-    root_logger.handlers = []
-    root_logger.addHandler(handler)
 
     asyncio.run(_async_start(salt_opts=salt_opts))

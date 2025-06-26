@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import DirectoryPath
@@ -9,23 +12,17 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, Settings
 from saltbox_bridge.utils.ssh import ensure_ssh_key
 from saltbox_bridge.utils.types import SslCertReqs
 
-LOGGER = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 
 
+@dataclass
 class FaststreamRedisConf:
-    def __init__(
-        self,
-        url: str,
-        username: str,
-        password: str,
-        ssl_cert_reqs: SslCertReqs = 'required',
-        ssl_ca_certs: str | None = None,
-    ):
-        self.url = url
-        self.username = username
-        self.password = password
-        self.ssl_cert_reqs = ssl_cert_reqs
-        self.ssl_ca_certs = ssl_ca_certs
+    url: str
+    username: str
+    password: str
+    ssl_cert_reqs: SslCertReqs = 'required'
+    ssl_ca_certs: str | None = None
 
 
 class Settings(BaseSettings):
@@ -124,11 +121,11 @@ class Hierarhy:
 
     def _make_dirs(self) -> None:
         if not self.gpg_dir.exists():
-            LOGGER.info('Creating directory for GPG keys: %s', self.gpg_dir)
+            logger.info('Creating directory for GPG keys: %s', self.gpg_dir)
             self.gpg_dir.mkdir(parents=True)
         self.gpg_dir.chmod(self.GPG_DIR_MODE)
         if not self.ssh_dir.exists():
-            LOGGER.info('Creating directory for SSH client files: %s', self.ssh_dir)
+            logger.info('Creating directory for SSH client files: %s', self.ssh_dir)
             self.ssh_dir.mkdir(parents=True)
         self.ssh_dir.chmod(self.SSH_DIR_MODE)
 
