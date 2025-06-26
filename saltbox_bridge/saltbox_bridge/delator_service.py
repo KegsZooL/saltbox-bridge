@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
+import salt.config  # type: ignore[import-untyped]
 from faststream import context
-from faststream.redis import RedisBroker
-from redis.asyncio.client import Redis
-from salt.utils.event import get_master_event  # type: ignore
 
-from saltbox_bridge.config import SETTINGS
+if TYPE_CHECKING:
+    from faststream.redis import RedisBroker
+    from redis.asyncio.client import Redis
+from salt.utils.event import get_master_event  # type: ignore[import-untyped]
+
+from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
@@ -42,7 +45,8 @@ class SaltBridge:
         self.salt_opts = salt_opts
 
         self.broker = get_faststream_broker(
-            redis_conf=SETTINGS.faststream_redis_conf, middlewares=[MastersAuthMiddleware]
+            redis_conf=SETTINGS.faststream_redis_conf,
+            middlewares=[MastersAuthMiddleware],
         )
         handlers_args: HandlersArgs = {
             'redis_client': self.redis_client,
@@ -84,21 +88,22 @@ class SaltBridge:
 
         LOGGER.debug('%s got event with tag "%s"', __name__, tag)
 
-        for handler in self.handlers:
-            try:
+        try:
+            for handler in self.handlers:
                 await handler.handle(tag, data)
-            except StopProcessing:
-                LOGGER.debug('End message processing')
-                return
+        except StopProcessing:
+            LOGGER.debug('End message processing')
+            return
 
 
-async def _async_start(salt_opts: dict) -> None:
+async def _async_start(salt_opts: dict | None) -> None:
+    if salt_opts is None:
+        salt_opts = salt.config.client_config('/etc/salt/master')
+    configure_logging(format=f'{salt_opts["log_fmt_console"]} (Bridge Delator)')
     salt_bridge = SaltBridge(salt_opts=salt_opts)
     await salt_bridge.start()
 
 
-def start(
-    salt_opts: dict,
-) -> None:
+def start(salt_opts: dict | None = None) -> None:
     coro = _async_start(salt_opts=salt_opts)
     asyncio.run(coro)

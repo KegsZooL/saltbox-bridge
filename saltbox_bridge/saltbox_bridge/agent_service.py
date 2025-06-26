@@ -23,7 +23,7 @@ from contextlib import asynccontextmanager
 import salt.config  # type: ignore
 from faststream import ContextRepo
 
-from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
 
@@ -33,12 +33,14 @@ from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 from saltbox_bridge.utils.salt_connector import SaltConnector
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-async def _async_start(
-    salt_opts: dict,
-) -> None:
+async def _async_start(salt_opts: dict | None) -> None:
+    if salt_opts is None:
+        salt_opts = salt.config.client_config('/etc/salt/master')
+    configure_logging(format=f'{salt_opts["log_fmt_console"]} (Bridge Agent)')
+
     salt_master = salt_opts['salt_box_master_id']
     saltbox_crypt = SaltBoxCrypt(master_id=salt_master, can_gen_new_key=True)
     core_connector = CoreConnector(master_id=salt_master, saltbox_crypt=saltbox_crypt)
@@ -77,7 +79,4 @@ async def _async_start(
 def start(
     salt_opts: dict | None = None,
 ) -> None:
-    if salt_opts is None:
-        salt_opts = salt.config.client_config('/etc/salt/master')
-
     asyncio.run(_async_start(salt_opts=salt_opts))

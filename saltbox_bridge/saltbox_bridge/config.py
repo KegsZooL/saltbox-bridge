@@ -13,6 +13,18 @@ from saltbox_bridge.utils.ssh import ensure_ssh_key
 from saltbox_bridge.utils.types import SslCertReqs
 
 
+def configure_logging(format: str) -> None:
+    log_level = os.getenv('SALT_BRIDGE_SERVICE_LOG_LEVEL', 'INFO')
+    formatter = logging.Formatter(format)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    root_logger = logging.getLogger()
+    root_logger.propagate = False
+    root_logger.setLevel(log_level)
+    root_logger.handlers.clear()
+    root_logger.addHandler(handler)
+
+
 logger = logging.getLogger(__name__)
 
 
