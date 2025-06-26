@@ -66,7 +66,7 @@ class CoreConnector:
                 broker = get_faststream_broker()
 
         async with broker as br:
-            response: RedisMessage = await br.request(  # type: ignore
+            response = await br.request(
                 message,
                 channel=f'master_{message_tag}',
                 timeout=response_timeout,

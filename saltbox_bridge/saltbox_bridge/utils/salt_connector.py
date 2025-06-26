@@ -5,40 +5,13 @@ import logging
 from typing import Any, cast
 
 from redis.asyncio import Redis
-from salt.client import Caller, LocalClient  # type: ignore
-from salt.config import minion_config  # type: ignore
+from salt.client import LocalClient  # type: ignore
 from salt.exceptions import SaltException  # type: ignore
 from saltbox_bridge_messages import SaltTgtType
 
 from saltbox_bridge.exceptions import CreateJobError
 
 LOGGER = logging.getLogger(__name__)
-
-
-def get_salt_caller() -> Caller:
-    opts = minion_config('/etc/salt/minion')
-    opts['file_client'] = 'local'
-    return Caller(mopts=opts)
-
-
-def get_state_apply_error(data: list[str] | dict[str, dict[str, Any]]) -> list[str]:
-    """
-    Proccess return dict from salt state.apply function, return errors
-    """
-    # TODO: Search for standard salt function
-    # TODO: Except potential errors while getting fileds
-    if isinstance(data, list):
-        return ['\n'.join(data)]
-    elif isinstance(data, dict):
-        errors = []
-        for key, val in data.items():
-            if not val['result']:
-                comment = val.get('comment', 'COMMENT IS MISSING')
-                errors.append(f'{key}: {comment}')
-        return errors
-    else:
-        msg = f'Unexpected return type {type(data)}'  # type: ignore[unreachable]
-        raise RuntimeError(msg)
 
 
 class SaltConnector:
@@ -57,7 +30,7 @@ class SaltConnector:
 
         jid: str = job_data[b'jid'].decode()
         tgt: str = job_data[b'tgt'].decode()
-        tgt_type: SaltTgtType = cast(SaltTgtType, job_data[b'tgt_type'].decode())
+        tgt_type: SaltTgtType = cast(SaltTgtType, job_data[b'tgt_type'].decode())  # FIXME (a.karmanov): Do not cast  # noqa: TD001 E501
         fun: str = job_data[b'fun'].decode()
         arg: list = json.loads(job_data[b'arg']) if b'arg' in job_data else []
         kwarg: dict = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else {}
