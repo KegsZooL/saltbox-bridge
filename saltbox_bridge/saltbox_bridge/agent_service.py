@@ -32,7 +32,6 @@ from saltbox_bridge.utils.gpg import SaltBoxCrypt
 from saltbox_bridge.utils.salt_caller import sync_saltbox
 from saltbox_bridge.utils.salt_connector import SaltConnector
 
-
 # from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 
 logger = logging.getLogger(__name__)

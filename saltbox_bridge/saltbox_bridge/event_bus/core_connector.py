@@ -5,7 +5,7 @@ from asyncio import sleep
 from datetime import datetime, timedelta
 from typing import Any
 
-from faststream.redis import RedisBroker, RedisMessage
+from faststream.redis import RedisBroker
 from saltbox_bridge_messages import (
     BridgeAuthRequest,
     BridgeMessageBase,
@@ -30,7 +30,7 @@ class CoreConnector:
     def __init__(self, master_id: str, saltbox_crypt: SaltBoxCrypt):
         self.master_id = master_id
         self.saltbox_crypt = saltbox_crypt
-        self.master_status = MasterStatus.new
+        self.master_status = MasterStatus.NEW
         self.is_connected = False
         self.dt_last_check: datetime | None = None
 
@@ -98,7 +98,7 @@ class CoreConnector:
         self.master_status = master_auth.status
         logger.info('Current Salt.Box status of master is %s', self.master_status)
 
-        if self.master_status != MasterStatus.accepted:
+        if self.master_status != MasterStatus.ACCEPTED:
             msg = 'Master status is not accepted. Waiting...'
             self.dt_last_check = utc_now()
             logger.warning(msg)
