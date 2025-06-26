@@ -72,7 +72,7 @@ class SaltBridge:
         context.set_global('core_connector', core_connector)
         context.set_global('master_id', master_id)
 
-        await core_connector.wait_success_connection(timeout=900)
+        await core_connector.wait_success_connection()
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
             while True:

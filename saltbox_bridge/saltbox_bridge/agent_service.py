@@ -20,7 +20,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-import salt.config  # type: ignore
+import salt.config  # type: ignore[import-untyped]
 from faststream import ContextRepo
 
 from saltbox_bridge.config import SETTINGS, configure_logging
@@ -45,7 +45,7 @@ async def _async_start(salt_opts: dict | None) -> None:
     saltbox_crypt = SaltBoxCrypt(master_id=salt_master, can_gen_new_key=True)
     core_connector = CoreConnector(master_id=salt_master, saltbox_crypt=saltbox_crypt)
 
-    await core_connector.wait_success_connection(timeout=900)
+    await core_connector.wait_success_connection()
 
     @asynccontextmanager
     async def lifespan(context: ContextRepo) -> AsyncIterator:

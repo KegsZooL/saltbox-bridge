@@ -107,14 +107,14 @@ class CoreConnector:
         self.dt_last_check = utc_now()
         return True
 
-    async def wait_success_connection(self, timeout: int) -> None:
+    async def wait_success_connection(self, timeout: int = 0) -> None:
         dt_start_check = utc_now()
         timeout_delta = timedelta(seconds=timeout)
 
         logger.info('Waiting for connection to Core...')
 
         while not self.is_connected:
-            if utc_now() - dt_start_check > timeout_delta:
+            if timeout_delta and (utc_now() - dt_start_check > timeout_delta):
                 msg = 'Connection to Core timed out, give up now'
                 raise CoreConnectionTimeoutError(msg)
 
