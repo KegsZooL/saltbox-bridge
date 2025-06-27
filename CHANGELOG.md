@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Move image to ALT Linux with onedir SaltStack install.
+- Replace GitFS with Rsync based synchronization.
+- Make Master auth process more reliable.
+- Notify Core on sync completion.
 
 ## [0.0.1] - 2025-05-16
 
