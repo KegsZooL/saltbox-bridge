@@ -11,6 +11,7 @@ file_ignore_glob:
 auto_accept: true
 log_level: '${SALT_MASTER_LOG_LEVEL}'
 log_level_logfile: 'quiet'
+log_fmt_console: '%(asctime)s %(colorlevel)s %(colorname)s %(colormsg)s"'
 presence_events: True
 engines:
   - saltbox_delator: {}

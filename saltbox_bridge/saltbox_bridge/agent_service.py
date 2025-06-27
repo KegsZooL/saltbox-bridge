@@ -73,6 +73,7 @@ async def _async_start(salt_opts: dict | None) -> None:
         routers=[router],
         redis_conf=SETTINGS.faststream_redis_conf,
         lifespan=lifespan,
+        logger=logging.getLogger(f'{__name__}.faststream'),
         # middlewares=[MastersAuthMiddleware],
     )
 

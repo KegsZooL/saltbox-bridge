@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 import os
 import ssl
 from collections.abc import Callable
+from typing import Any
 
 from faststream import FastStream
 from faststream.broker.types import BrokerMiddleware
@@ -15,6 +17,7 @@ from saltbox_bridge.config import SETTINGS, FaststreamRedisConf
 def get_faststream_broker(
     redis_conf: FaststreamRedisConf | None = None,
     middlewares: list[BrokerMiddleware] | None = None,
+    logger: logging.Logger | None = None,
 ) -> RedisBroker:
     if redis_conf is None:
         redis_conf = SETTINGS.faststream_redis_conf
@@ -34,10 +37,15 @@ def get_faststream_broker(
     else:
         security = SASLPlaintext(username=redis_conf.username, password=redis_conf.password)
 
+    kwargs: dict[str, Any] = {
+        'url': redis_conf.url,
+        'security': security,
+    }
     if middlewares:
-        return RedisBroker(url=redis_conf.url, security=security, middlewares=middlewares)
-    else:
-        return RedisBroker(url=redis_conf.url, security=security)
+        kwargs['middlewares'] = middlewares
+    if logger:
+        kwargs['logger'] = logger
+    return RedisBroker(**kwargs)
 
 
 def get_faststream_app(
@@ -45,6 +53,7 @@ def get_faststream_app(
     redis_conf: FaststreamRedisConf | None = None,
     middlewares: list[BrokerMiddleware] | None = None,
     broker: RedisBroker | None = None,
+    logger: logging.Logger | None = None,
     lifespan: Callable | None = None,
 ) -> FastStream:
     if not broker:
@@ -52,12 +61,16 @@ def get_faststream_app(
             msg = 'Redis broker not configured'
             raise RuntimeError(msg)
 
-        broker = get_faststream_broker(redis_conf=redis_conf, middlewares=middlewares)
+        broker = get_faststream_broker(redis_conf=redis_conf, middlewares=middlewares, logger=logger)
 
     for router in routers:
         broker.include_router(router)
 
+    kwargs: dict[str, Any] = {
+        'broker': broker,
+    }
     if lifespan:
-        return FastStream(broker, lifespan=lifespan)
-    else:
-        return FastStream(broker)
+        kwargs['lifespan'] = lifespan
+    if logger:
+        kwargs['logger'] = logger
+    return FastStream(**kwargs)
