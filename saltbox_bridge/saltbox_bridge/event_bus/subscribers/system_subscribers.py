@@ -14,7 +14,7 @@ from saltbox_bridge_messages import (
 
 from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
-from saltbox_bridge.utils.salt_caller import sync_saltbox
+from saltbox_bridge.utils.salt_caller import SaltCaller
 from saltbox_bridge.utils.system import get_random_string, utc_now
 
 Message = Annotated[RedisMessage, Context()]
@@ -23,12 +23,12 @@ router = RedisRouter(middlewares=[MastersAuthMiddleware])
 router_not_auth = RedisRouter()
 
 
-@router.subscriber('sync_repos')
-def sync_repos(message: CoreEmptyMessage) -> None:
-    # TODO (a.karmanov): True async?
-    # TODO (a.karmanov): lock file
-    # TODO (a.karmanov): Notify Salt.Box Core
-    sync_saltbox()
+@router.subscriber('sync_saltbox')
+async def sync_saltbox(
+    message: CoreEmptyMessage,
+    salt_caller: SaltCaller = Context(),  # noqa: B008
+) -> None:
+    await salt_caller.sync_saltbox()
 
 
 @router.subscriber('burst_test')

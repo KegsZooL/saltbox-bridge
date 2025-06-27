@@ -38,7 +38,3 @@ sync_sshfs:
       - '-e'
       - "ssh -F '{{ ssh_conf }}'"
 {%- endif %}
-
-#update_fileserver:
-#  cmd.run:
-#    - name: 'salt-run fileserver.update gitfs'
