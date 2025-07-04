@@ -9,11 +9,13 @@ from saltbox_bridge_messages import (
     BridgeTestBurstLoadMessage,
     BridgeTestBurstResponse,
     CoreEmptyMessage,
+    CoreTestBurstJobsRequest,
     CoreTestBurstRequest,
 )
 
 from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
+from saltbox_bridge.utils.salt_bus import FakeJobNewEventGenerator
 from saltbox_bridge.utils.salt_caller import SaltCaller
 from saltbox_bridge.utils.system import get_random_string, utc_now
 
@@ -43,3 +45,11 @@ async def burst_test(
         await core_connector.send_messagee(message=load_msg, message_tag='burst_test_load')
     duration = utc_now() - start
     return BridgeTestBurstResponse(master=message.master, time=duration)
+
+
+@router.subscriber('burst_jobs_test')
+async def burst_jobs_test(
+    message: CoreTestBurstJobsRequest,
+    core_connector: CoreConnector = Context(),  # noqa: B008  # FIXME Needed?
+) -> None:
+    await FakeJobNewEventGenerator().fire(duration=message.duration, rate=message.rate)
