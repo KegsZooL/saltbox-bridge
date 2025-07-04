@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
 
+from redis.asyncio.client import Pipeline
 from salt.utils import json  # type: ignore
 
 from saltbox_bridge.exceptions import StopProcessing
-from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler
+from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler, MessageDataType
 from saltbox_bridge.utils.jid import jid_to_epoch
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class JobNewMessageHandler(BaseMessageHandler):
@@ -18,22 +18,31 @@ class JobNewMessageHandler(BaseMessageHandler):
     A message handler for new job salt message when
     """
 
-    tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})/new')
+    tag_pattern = re.compile(r'^salt/job/(?P<jid>\d{20})/new$')
     # Mention: on salt-call call there is no salt/job/*/new event
     # (but salt/job/*/ret/* it is)
 
-    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+    def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
+        # US292: Job* models exept `tgt: str`
+        if isinstance(tgt := data.get('tgt'), list):
+            data['tgt'] = ','.join(tgt)
+        return data
+
+    async def process(self, match: re.Match, data: MessageDataType) -> None:
         jid = match.group('jid')
         data_json = json.dumps(data)
-        LOGGER.info('New job: %s', jid)
+        logger.info('New job: %s', jid)
 
-        await self._process_job(jid=jid, data_json=data_json)
+        async with self.redis_client.pipeline() as pipe:
+            await self._save_job_pipeline(pipe, jid=jid, data_json=data_json)
+            await pipe.execute()
 
         raise StopProcessing()
 
-    async def _process_job(self, jid: str, data_json: str) -> None:
-        await self.redis_client.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
-        await self.redis_client.publish(channel=f'job:{jid}:new', message=data_json)
+    async def _save_job_pipeline(self, pipe: Pipeline, jid: str, data_json: str) -> Pipeline:
+        pipe = pipe.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
+        pipe = pipe.publish(channel=f'job:{jid}:new', message=data_json)
+        return pipe
 
 
 class JobNewForTaskMessageHandler(JobNewMessageHandler):
@@ -41,21 +50,23 @@ class JobNewForTaskMessageHandler(JobNewMessageHandler):
     A message handler for new job salt message when for task
     """
 
-    tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new')
+    tag_pattern = re.compile(r'^salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new$')
 
-    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+    def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
+        data['jid'] = match.group('jid')
+        return super().normalize_data(match=match, tag=tag, data=data)
+
+    async def process(self, match: re.Match, data: MessageDataType) -> None:
         jid = match.group('jid')
         tid = match.group('tid')
 
-        data['jid'] = jid
         data_json = json.dumps(data)
 
-        LOGGER.info('New job (jid: %s) for task: %s', jid, tid)
+        logger.info('New job (jid: %s) for task: %s', jid, tid)
 
-        await self._process_job(jid=jid, data_json=data_json)
-        await self._process_task(jid=jid, tid=tid, data_json=data_json)
+        async with self.redis_client.pipeline() as pipe:
+            await self._save_job_pipeline(pipe, jid=jid, data_json=data_json)
+            pipe = pipe.publish(channel=f'task:{tid}:job:{jid}:new', message=data_json)
+            await pipe.execute()
 
         raise StopProcessing()
-
-    async def _process_task(self, jid: str, tid: str, data_json: str) -> None:
-        await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:new', message=data_json)
