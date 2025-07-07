@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import abc
+import asyncio
 import logging
-from asyncio import sleep
 from datetime import timedelta
 from typing import Any, ClassVar
 
@@ -61,8 +61,9 @@ def get_event_obj() -> MasterEvent:
 
 
 class FakeJobNewEventGenerator:
-    CHUNK_SIZE = 100
+    BASE_CHUNK_SIZE = 100
     THRESHOLD = 0.1  # TODO (a.karmanov) US363 :  Implement time lag threshold
+    lock = asyncio.Lock()
 
     async def fire(self, duration: timedelta, rate: int) -> None:
         """
@@ -71,17 +72,21 @@ class FakeJobNewEventGenerator:
         :param duration: how long to send fake messages
         :param rate: target messages per second rate
         """
-        # TODO Lock
+        async with self.lock:
+            return await self._fire(duration=duration, rate=rate)
+
+    async def _fire(self, duration: timedelta, rate: int) -> None:
         event = get_event_obj()
         start_time = utc_now()
         end_time = start_time + duration
         counter = 0
-        chunk_rate = rate / self.CHUNK_SIZE
+        chunk_size = self.BASE_CHUNK_SIZE if self.BASE_CHUNK_SIZE < rate else rate
+        chunk_rate = rate / chunk_size
         relax_time = 1 / chunk_rate
 
         while utc_now() < end_time:
-            for _ in range(self.CHUNK_SIZE):
+            for _ in range(chunk_size):
                 data = FakeJobNewBusMessage()
                 event.fire_event(data=data.get_data(), tag=data.get_tag())
                 counter += 1
-            await sleep(relax_time)
+            await asyncio.sleep(relax_time)
