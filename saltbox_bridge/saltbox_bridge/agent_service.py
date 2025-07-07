@@ -63,7 +63,6 @@ async def _async_start(salt_opts: dict | None) -> None:
         context.set_global('saltbox_crypt', saltbox_crypt)
         context.set_global('core_connector', core_connector)
         context.set_global('salt_caller', salt_caller)
-        context.set_global('burst_jobs_lock', asyncio.Lock())
 
         yield
 

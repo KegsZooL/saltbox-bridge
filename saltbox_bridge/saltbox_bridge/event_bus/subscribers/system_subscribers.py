@@ -50,6 +50,6 @@ async def burst_test(
 @router.subscriber('burst_jobs_test')
 async def burst_jobs_test(
     message: CoreTestBurstJobsRequest,
-    core_connector: CoreConnector = Context(),  # noqa: B008  # FIXME Needed?
 ) -> None:
-    await FakeJobNewEventGenerator().fire(duration=message.duration, rate=message.rate)
+    gen = FakeJobNewEventGenerator()
+    await gen.fire(id=message.id, duration=message.duration, rate=message.rate)

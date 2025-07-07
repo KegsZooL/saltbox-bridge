@@ -27,16 +27,18 @@ class FakeJobNewBusMessage(SaltBusMessage):
     LATEST_JID_TIME = utc_now()
     DEFAULT_MINIONS: ClassVar = ['fake!_minion']
 
-    def __init__(self, fun: str = 'test.ping', minions: list[str] | None = None) -> None:
+    def __init__(self, label: str, fun: str = 'test.ping', minions: list[str] | None = None) -> None:
         self.minions = minions if minions is not None else self.DEFAULT_MINIONS
         self.jid = self._gen_jid()
         self.fun = fun
+        self.label = label
 
     def get_tag(self) -> str:
         return f'salt/job/{self.jid}/new'
 
     def get_data(self) -> dict[str, Any]:
         return {
+            '_fake_message_label': self.label,
             'arg': [],
             'fun': self.fun,
             'jid': self.jid,
@@ -65,7 +67,7 @@ class FakeJobNewEventGenerator:
     THRESHOLD = 0.1  # TODO (a.karmanov) US363 :  Implement time lag threshold
     lock = asyncio.Lock()
 
-    async def fire(self, duration: timedelta, rate: int) -> None:
+    async def fire(self, id: str, duration: timedelta, rate: int) -> None:
         """
         Generate fake `job/{jid}/new` messages
 
@@ -73,20 +75,17 @@ class FakeJobNewEventGenerator:
         :param rate: target messages per second rate
         """
         async with self.lock:
-            return await self._fire(duration=duration, rate=rate)
+            event = get_event_obj()
+            start_time = utc_now()
+            end_time = start_time + duration
+            counter = 0
+            chunk_size = self.BASE_CHUNK_SIZE if self.BASE_CHUNK_SIZE < rate else rate
+            chunk_rate = rate / chunk_size
+            relax_time = 1 / chunk_rate
 
-    async def _fire(self, duration: timedelta, rate: int) -> None:
-        event = get_event_obj()
-        start_time = utc_now()
-        end_time = start_time + duration
-        counter = 0
-        chunk_size = self.BASE_CHUNK_SIZE if self.BASE_CHUNK_SIZE < rate else rate
-        chunk_rate = rate / chunk_size
-        relax_time = 1 / chunk_rate
-
-        while utc_now() < end_time:
-            for _ in range(chunk_size):
-                data = FakeJobNewBusMessage()
-                event.fire_event(data=data.get_data(), tag=data.get_tag())
-                counter += 1
-            await asyncio.sleep(relax_time)
+            while utc_now() < end_time:
+                for _ in range(chunk_size):
+                    data = FakeJobNewBusMessage(label=id)
+                    event.fire_event(data=data.get_data(), tag=data.get_tag())
+                    counter += 1
+                await asyncio.sleep(relax_time)
