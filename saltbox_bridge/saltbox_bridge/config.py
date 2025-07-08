@@ -14,7 +14,7 @@ from saltbox_bridge.utils.types import SslCertReqs
 
 
 def configure_logging(format: str) -> None:
-    log_level = os.getenv('SALT_BRIDGE_SERVICE_LOG_LEVEL', 'INFO')
+    log_level = os.getenv('SALTBOX_BRIDGE_LOG_LEVEL', 'INFO').upper()
     formatter = logging.Formatter(format)
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
