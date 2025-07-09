@@ -67,7 +67,7 @@ class FakeJobNewEventGenerator:
     THRESHOLD = 0.1  # TODO (a.karmanov) US363 :  Implement time lag threshold
     lock = asyncio.Lock()
 
-    async def fire(self, id: str, duration: timedelta, rate: int) -> None:
+    async def fire(self, id: str, duration: timedelta, rate: int) -> int:
         """
         Generate fake `job/{jid}/new` messages
 
@@ -89,3 +89,4 @@ class FakeJobNewEventGenerator:
                     event.fire_event(data=data.get_data(), tag=data.get_tag())
                     counter += 1
                 await asyncio.sleep(relax_time)
+        return counter

@@ -1,26 +1,32 @@
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from faststream import Context
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
+from redis.asyncio import Redis
 from saltbox_bridge_messages import (
     BridgeTestBurstLoadMessage,
     BridgeTestBurstResponse,
     CoreEmptyMessage,
     CoreTestBurstJobsRequest,
     CoreTestBurstRequest,
+    BurstJobsTestReportSchema,
 )
 
+from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.salt_bus import FakeJobNewEventGenerator
 from saltbox_bridge.utils.salt_caller import SaltCaller
 from saltbox_bridge.utils.system import get_random_string, utc_now
 
+BURST_JOBS_TEST_REPORT_HASH_NAME = 'burst_jobs_test'
 Message = Annotated[RedisMessage, Context()]
 
+logger = logging.getLogger(__name__)
 router = RedisRouter(middlewares=[MastersAuthMiddleware])
 router_not_auth = RedisRouter()
 
@@ -50,6 +56,28 @@ async def burst_test(
 @router.subscriber('burst_jobs_test')
 async def burst_jobs_test(
     message: CoreTestBurstJobsRequest,
+    redis_client: Redis = Context(),  # noqa: B008
 ) -> None:
     gen = FakeJobNewEventGenerator()
-    await gen.fire(id=message.id, duration=message.duration, rate=message.rate)
+    start = utc_now()
+    count = await gen.fire(id=message.id, duration=message.duration, rate=message.rate)
+    end = utc_now()
+    logger.info('Sent %d fake job/{jid}/new messages', count)
+
+    report = BurstJobsTestReportSchema(
+        count=count,
+        start=start,
+        end=end,
+    )
+
+    async with redis_client.pipeline() as pipe:
+        pipe.hset(
+            name=BURST_JOBS_TEST_REPORT_HASH_NAME,
+            key=message.id,
+            value=report.model_dump_json())
+        if SETTINGS.expire is not None:
+            pipe = pipe.hexpire(  # type: ignore[attr-defined]
+                BURST_JOBS_TEST_REPORT_HASH_NAME,
+                SETTINGS.expire,
+                message.id)
+        await pipe.execute()
