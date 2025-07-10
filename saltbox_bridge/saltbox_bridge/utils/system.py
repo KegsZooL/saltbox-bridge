@@ -39,12 +39,13 @@ class SteadyRun:
         :param strict: exit on timeover if stict otherwise send all rate * duration messages
         :yield: current run time
         """
-        def time_series() -> Generator[datetime, None, None]:
-            time = start_time
+        def run_time_generator() -> Generator[tuple[datetime, datetime]]:
+            current = start_time
             interval = timedelta(seconds=1 / rate)
-            while time < end_time:
-                yield time
-                time += interval
+            while current < end_time:
+                next = current + interval
+                yield current, next
+                current = next
 
         self.counter = 0
         self.lagging_counter = 0
@@ -56,14 +57,13 @@ class SteadyRun:
         end_time = start_time + duration
         now = start_time
 
-        for time in time_series():
-            yield time
+        for current, next in run_time_generator():
+            yield current
 
             self.counter += 1
             now = utc_now()
-            relax_time = (time - now).total_seconds()
+            relax_time = (next - now).total_seconds()
             if relax_time < 0:
-                logging.error('BOOM')  # FIXME
                 self.lagging_counter += 1
             if strict and now > end_time:
                 break
