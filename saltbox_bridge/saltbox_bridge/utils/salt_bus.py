@@ -3,14 +3,13 @@ from __future__ import annotations
 import abc
 import asyncio
 import logging
-from collections.abc import Generator
 from datetime import datetime, timedelta
 from typing import Any, ClassVar
 
 from salt.config import master_config  # type: ignore[import-untyped]
 from salt.utils.event import MasterEvent, get_master_event  # type: ignore[import-untyped]
 
-from saltbox_bridge.utils.system import utc_now
+from saltbox_bridge.utils.system import SteadyRun, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -82,13 +81,6 @@ class FakeJobNewEventGenerator:
         :param strict: exit on timeover if stict otherwise send all rate * duration messages
         :return: counters of all sent messages and sent with delay messages
         """
-        def time_series() -> Generator[datetime, None, None]:
-            time = start_time
-            interval = timedelta(seconds=1 / rate)
-            while time < end_time:
-                yield time
-                time += interval
-
         sent_counter = 0
         lagging_counter = 0
 
@@ -97,20 +89,9 @@ class FakeJobNewEventGenerator:
 
         async with self.lock:
             event = get_event_obj()
-            start_time = utc_now()
-            end_time = start_time + duration
-            now = start_time
+            runner = SteadyRun()
 
-            for time in time_series():
+            async for now in runner.run(duration=duration, rate=rate, strict=strict):
                 data = FakeJobNewBusMessage(label=id, created_at=now)
                 event.fire_event(data=data.get_data(), tag=data.get_tag())
-
-                sent_counter += 1
-                now = utc_now()
-                relax_time = (time - now).total_seconds()
-                if relax_time < 0:
-                    lagging_counter += 1
-                if strict and now > end_time:
-                    break
-                await asyncio.sleep(relax_time)
-        return sent_counter, lagging_counter
+        return runner.counter, runner.lagging_counter
