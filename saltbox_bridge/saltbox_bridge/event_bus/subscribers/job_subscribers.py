@@ -7,7 +7,7 @@ from faststream import Context, Logger
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 from saltbox_bridge_messages import (
-    BridgeNewJobResponce,
+    BridgeNewJobResponse,
     CoreNewJobAsyncRequest,
     CoreNewJobRequest,
     JobReturnSchema,
@@ -25,7 +25,7 @@ router = RedisRouter(middlewares=[MastersAuthMiddleware])
 router_not_auth = RedisRouter()
 
 
-@router.subscriber('run_job')
+@router.subscriber("run_job")
 async def run_job(
     message: CoreNewJobAsyncRequest,
     logger: Logger,
@@ -35,19 +35,19 @@ async def run_job(
         jid: str = await salt_connector.create_job_from_redis(
             hash_name=message.hash_name,
         )
-        logger.info('Created job: %s', jid)
+        logger.info("Created job: %s", jid)
         return jid
     except CreateJobError as error:
         logger.error(error)
         return None
 
 
-@router.subscriber('run_job_sync')
+@router.subscriber("run_job_sync")
 async def run_job_sync(
     message: CoreNewJobRequest,
     logger: Logger,
     salt_connector: SaltConnector = Context(),  # noqa: B008
-) -> BridgeNewJobResponce | None:
+) -> BridgeNewJobResponse | None:
     try:
         job_result: dict = await salt_connector.run_job_sync(
             tgt=message.tgt,
@@ -60,15 +60,18 @@ async def run_job_sync(
 
         # TODO: check this part
         job_result_val: dict = next(iter(job_result.values()), {})
-        jid: str = job_result_val.get('jid', '')
+        jid: str = job_result_val.get("jid", "")
 
-        result = BridgeNewJobResponce(
-            **message.model_dump(exclude={'jid'}),
+        result = BridgeNewJobResponse(
+            **message.model_dump(exclude={"jid"}),
             jid=jid,
-            returns={minion_id: JobReturnSchema(**job_return) for minion_id, job_return in job_result.items()},
+            returns={
+                minion_id: JobReturnSchema(**job_return)
+                for minion_id, job_return in job_result.items()
+            },
         )
 
-        logger.info('Created job: %s', result)
+        logger.info("Created job: %s", result)
         return result
     except CreateJobError as error:
         logger.error(error)
