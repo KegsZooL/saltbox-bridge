@@ -3,7 +3,8 @@ from __future__ import annotations
 import abc
 import asyncio
 import logging
-from datetime import timedelta
+from collections.abc import Generator
+from datetime import datetime, timedelta
 from typing import Any, ClassVar
 
 from salt.config import master_config  # type: ignore[import-untyped]
@@ -27,9 +28,14 @@ class FakeJobNewBusMessage(SaltBusMessage):
     LATEST_JID_TIME = utc_now()
     DEFAULT_MINIONS: ClassVar = ['fake!_minion']
 
-    def __init__(self, label: str, fun: str = 'test.ping', minions: list[str] | None = None) -> None:
+    def __init__(self,
+        label: str,
+        fun: str = 'test.ping',
+        minions: list[str] | None = None,
+        created_at: datetime | None = None,
+    ) -> None:
         self.minions = minions if minions is not None else self.DEFAULT_MINIONS
-        self.jid = self._gen_jid()
+        self.jid = self._gen_jid(created_at)
         self.fun = fun
         self.label = label
 
@@ -49,12 +55,13 @@ class FakeJobNewBusMessage(SaltBusMessage):
             'user': 'root'
         }
 
-    def _gen_jid(self) -> str:
-        jid_dt = utc_now()
-        if jid_dt <= self.LATEST_JID_TIME:
-            jid_dt = self.LATEST_JID_TIME + timedelta(microseconds=1)
-        self.LATEST_JID_TIME = jid_dt
-        return f'{jid_dt:%Y%m%d%H%M%S%f}'
+    def _gen_jid(self, timestamp: datetime | None = None) -> str:
+        if timestamp is None:
+            timestamp = utc_now()
+        if timestamp <= self.LATEST_JID_TIME:
+            timestamp = self.LATEST_JID_TIME + timedelta(microseconds=1)
+        self.LATEST_JID_TIME = timestamp
+        return f'{timestamp:%Y%m%d%H%M%S%f}'
 
 
 def get_event_obj() -> MasterEvent:
@@ -63,30 +70,47 @@ def get_event_obj() -> MasterEvent:
 
 
 class FakeJobNewEventGenerator:
-    BASE_CHUNK_SIZE = 100
-    THRESHOLD = 0.1  # TODO : (a.karmanov) : US363 : Implement time lag threshold
     lock = asyncio.Lock()
 
-    async def fire(self, id: str, duration: timedelta, rate: int) -> int:
+    async def fire(self, id: str, duration: timedelta, rate: int, strict: bool = True) -> tuple[int, int]:
         """
         Generate fake `job/{jid}/new` messages
 
+        :param id: unique identifier for the burst
         :param duration: how long to send fake messages
         :param rate: target messages per second rate
+        :param strict: exit on timeover if stict otherwise send all rate * duration messages
+        :return: counters of all sent messages and sent with delay messages
         """
+        def time_series() -> Generator[datetime, None, None]:
+            time = start_time
+            interval = timedelta(seconds=1 / rate)
+            while time < end_time:
+                yield time
+                time += interval
+
+        sent_counter = 0
+        lagging_counter = 0
+
+        if rate < 1:
+            return sent_counter, lagging_counter
+
         async with self.lock:
             event = get_event_obj()
             start_time = utc_now()
             end_time = start_time + duration
-            counter = 0
-            chunk_size = self.BASE_CHUNK_SIZE if self.BASE_CHUNK_SIZE < rate else rate
-            chunk_rate = rate / chunk_size
-            relax_time = 1 / chunk_rate
+            now = start_time
 
-            while utc_now() < end_time:
-                for _ in range(chunk_size):
-                    data = FakeJobNewBusMessage(label=id)
-                    event.fire_event(data=data.get_data(), tag=data.get_tag())
-                    counter += 1
+            for time in time_series():
+                data = FakeJobNewBusMessage(label=id, created_at=now)
+                event.fire_event(data=data.get_data(), tag=data.get_tag())
+
+                sent_counter += 1
+                now = utc_now()
+                relax_time = (time - now).total_seconds()
+                if relax_time < 0:
+                    lagging_counter += 1
+                if strict and now > end_time:
+                    break
                 await asyncio.sleep(relax_time)
-        return counter
+        return sent_counter, lagging_counter
