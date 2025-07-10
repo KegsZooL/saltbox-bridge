@@ -60,12 +60,18 @@ async def burst_jobs_test(
 ) -> None:
     gen = FakeJobNewEventGenerator()
     start = utc_now()
-    sent, overdue = await gen.fire(id=message.id, duration=message.duration, rate=message.rate)
+    sent, overdue = await gen.fire(
+        id=message.id,
+        duration=message.duration,
+        rate=message.rate,
+        strict=message.strict,
+    )
     end = utc_now()
     logger.info('Sent %d fake job/{jid}/new messages, sent with delay: %d', sent, overdue)
 
     report = BurstJobsTestReportSchema(
         count=sent,
+        overdue=overdue,
         start=start,
         end=end,
     )
