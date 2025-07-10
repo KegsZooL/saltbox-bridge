@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Faststream messages and Salt `job/*/new` events performance test generators.
+
 ### Changed
 
 - Move image to ALT Linux with onedir SaltStack install.
