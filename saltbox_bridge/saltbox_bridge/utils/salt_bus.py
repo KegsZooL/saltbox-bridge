@@ -64,7 +64,7 @@ def get_event_obj() -> MasterEvent:
 
 class FakeJobNewEventGenerator:
     BASE_CHUNK_SIZE = 100
-    THRESHOLD = 0.1  # TODO (a.karmanov) US363 :  Implement time lag threshold
+    THRESHOLD = 0.1  # TODO : (a.karmanov) : US363 : Implement time lag threshold
     lock = asyncio.Lock()
 
     async def fire(self, id: str, duration: timedelta, rate: int) -> int:
