@@ -10,10 +10,10 @@ from redis.asyncio import Redis
 from saltbox_bridge_messages import (
     BridgeTestBurstLoadMessage,
     BridgeTestBurstResponse,
+    BurstJobsTestReportSchema,
     CoreEmptyMessage,
     CoreTestBurstJobsRequest,
     CoreTestBurstRequest,
-    BurstJobsTestReportSchema,
 )
 
 from saltbox_bridge.config import SETTINGS
