@@ -55,7 +55,7 @@ RUN mkdir --parents /var/cache/salt/master/ /var/lib/saltbox-bridge/
 COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
-COPY master/states/ /srv/salt_local/
+COPY master/salt_local/ /srv/salt_local/
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
 COPY pillar /srv/salt_extmod/pillar/
