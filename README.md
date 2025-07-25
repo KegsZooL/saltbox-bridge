@@ -7,7 +7,22 @@ master to Salt.Box.
 Currently supported salt-master versions:
 - 3006.9
 
+## Salt files hierarhy
+
+- `/srv/salt/` — standard directory for user's custom files. In Salt.Box Compose
+  it is mounted to a local dir.
+- `/srv/saltbox_salt/` is a part of Salt.Box system to replicate states from
+packages.
+- `/srv/salt_local/` is for local Salt.Box states and modules.
+- `/srv/salt_master_local/` is for the Master local minion Salt.Box service states and
+modules.
+- `/srv/salt_extmod/` is for "external modules". There are some distributed
+  with this repository. It is possible to put some custom modules here also.
+
 ## Manual installation
+
+> Jun 2025: section needs udpate
+
 0. Get Redis root certificate with command inside `saltbox-compose`:
   ```bash
   sudo docker compose cp redis-salt:/etc/redis/certs/ca.crt ./redis-ca.crt
@@ -68,7 +83,7 @@ prefferd to change it to not interfere with master default roots:
 
 file_roots:
     base:
-        - '/srv/salt_local/'
+        - '/srv/salt_master_local/'
 ```
 
 Put `saltbox` YAML file to `/etc/salt/`:

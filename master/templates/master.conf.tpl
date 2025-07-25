@@ -3,6 +3,7 @@ module_dirs:
 file_roots:
   base:
     - /srv/salt/
+    - /srv/salt_local/
     - /srv/saltbox_salt/
     - /srv/sshfs/  # Serve "big" files both with `ssh://` and `salt://`
 file_ignore_glob:

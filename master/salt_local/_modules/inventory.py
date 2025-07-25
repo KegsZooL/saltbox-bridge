@@ -12,7 +12,15 @@ from salt.exceptions import (  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
-BIN_NAMES = ('fusioninventory-agent', 'ocsinventory-agent')
+COMMANDS_MAPPING = {
+    'fusioninventory-agent': ['--scan-homedirs', '--local', '-'],
+    'ocsinventory-agent': ['--scan-homedirs', '--stdout'],
+}
+
+# FusionInventory has also:
+#   - 'envs'
+#   - 'operatingsystem' (has nested TZ)
+#   - 'processes'
 CATEGORIES = (
     'batteries',
     'bios',
@@ -59,20 +67,21 @@ def inventory_to_dict(data: str) -> dict[str, Any]:
     return parsed
 
 
-def get_inventory_agent() -> str | None:
-    for bin in BIN_NAMES:
+def get_inventory_cmd() -> list[str] | None:
+    for bin, flags in COMMANDS_MAPPING.items():
         if (path := shutil.which(bin)) is not None:
-            return path
+            return [path] + flags
     return None
 
 
 
+# TODO (a.karmanov) :: US372 :: Categories
 def get() -> dict[str, Any]:
-    inv_agent = get_inventory_agent()
-    if inv_agent is None:
-        msg = f'Not found compatible inventory agent {BIN_NAMES}'
+    cmd = get_inventory_cmd()
+    if cmd is None:
+        agents = tuple(COMMANDS_MAPPING.keys())
+        msg = f'Not found compatible inventory agent {agents}'
         raise CommandNotFoundError(msg)
-    cmd = [inv_agent, '--stdout']
     try:
         result = subprocess.run(cmd, capture_output=True, check=True)
     except subprocess.CalledProcessError as err:

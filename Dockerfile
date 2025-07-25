@@ -55,6 +55,7 @@ RUN mkdir --parents /var/cache/salt/master/ /var/lib/saltbox-bridge/
 COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
+COPY master/salt_master_local/ /srv/salt_master_local/
 COPY master/salt_local/ /srv/salt_local/
 COPY engines /srv/salt_extmod/engines/
 COPY runners /srv/salt_extmod/runners/
@@ -70,7 +71,7 @@ EXPOSE 4505 4506
 
 FROM salt-master-base AS salt-master
 LABEL name='saltbox-salt-master'
-LABEL version='4.2'
+LABEL version='4.3'
 LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
@@ -96,7 +97,16 @@ ENV SALTBOX_BRIDGE_MESSAGES_SRC_PATH=/mnt/saltbox-bridge-messages/
 
 FROM salt-base AS salt-mock-minion
 LABEL name='saltbox-salt-minion'
-LABEL version='1.0'
+LABEL version='1.1'
+RUN \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+<<EOF
+set -e
+mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
+apt-get update
+apt-get install --yes fusioninventory-agent less
+EOF
 RUN mkdir --parents /etc/salt/minion.d/
 COPY --chmod=755 minion/minion_entrypoint.sh /usr/local/bin/
 ENV SALT_MASTER=salt-master
