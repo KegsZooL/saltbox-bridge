@@ -4,6 +4,7 @@ file_roots:
   base:
     - /srv/salt/
     - /srv/saltbox_salt/
+    - /srv/sshfs/  # Serve "big" files both with `ssh://` and `salt://`
 file_ignore_glob:
   - '*/.git/*'
   - '*.pyc'
