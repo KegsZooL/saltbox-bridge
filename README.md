@@ -18,6 +18,7 @@ packages.
 modules.
 - `/srv/salt_extmod/` is for "external modules". There are some distributed
   with this repository. It is possible to put some custom modules here also.
+- `/srv/sshfs/` for files to serve both as `ssh://` and `salt://`.
 
 ## Manual installation
 
