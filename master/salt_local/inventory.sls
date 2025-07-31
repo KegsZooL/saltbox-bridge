@@ -1,9 +1,20 @@
+{% set agent = 'fusioninventory-agent' %}
+
 Dependencies intalled:
-# TODO (a.karmanov) :: US372 :: ALTLinux
     saltutil.sync_modules:
         - refresh: True
+{% if not grains['os'].startswith('ALT ') %}
     pkg.installed:
-        - name: fusioninventory-agent
+        - name: {{ agent }}
+{% else %}
+{# FIXME: Write pkg module for ALT 乁[ ° ᴥ ° ]ㄏ  #}
+    cmd.run:
+      - name: |
+          set -e
+          command -v "{{ agent }}" && exit 0 || true
+          apt-get update
+          apt-get install "{{ agent }}"
+{% endif %}
 
 Inventory:
     module.run:
