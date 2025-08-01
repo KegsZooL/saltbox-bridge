@@ -33,10 +33,6 @@ class JobNewMessageHandler(BaseMessageHandler):
         data_json = json.dumps(data)
         logger.info('New job: %s', jid)
 
-        if self.metric:
-            await self.metric.aggregate(
-                master=self.salt_opts['salt_box_master_id'], jid=jid, data=data, redis_client=self.redis_client)
-
         async with self.redis_client.pipeline() as pipe:
             await self._save_job_pipeline(pipe, jid=jid, data_json=data_json)
             await pipe.execute()

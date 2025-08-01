@@ -36,11 +36,6 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
     async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str) -> None:
         hash_name = f'job:{jid}:return'
-
-        if self.metric:
-            _ = await self.metric.aggregate(
-                master=data['salt_master'], jid=jid, redis_client=self.redis_client, data=data)
-
         async with self.redis_client.pipeline(transaction=True) as pipe:
             pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
             if SETTINGS.expire is not None:

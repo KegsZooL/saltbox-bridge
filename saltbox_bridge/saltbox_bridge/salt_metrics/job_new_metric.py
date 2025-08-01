@@ -1,31 +1,42 @@
 from __future__ import annotations
 
 import logging
+import re
 from time import time
 
-import redis.asyncio as redis
 from prometheus_client import Counter
-from prometheus_client.metrics import MetricWrapperBase
 
 from saltbox_bridge.salt_handlers.base_handler import MessageDataType
-from saltbox_bridge.salt_metrics.base_metric import BaseMetric
+from saltbox_bridge.salt_metrics.base_metric import JobBaseMetric
 
 logger = logging.getLogger(__name__)
 
 
-class JobNewMetric(BaseMetric):
+class JobNewMetric(JobBaseMetric):
 
-    def _create(self) -> MetricWrapperBase:
+    _TAG_PATTERN = re.compile(r'^salt/job/(?P<jid>\d{20})/new$')
+
+    def _create(self) -> Counter:
         return Counter(
             name=self.name, documentation=self.desc, labelnames=self.labels, registry=self.registry)
 
-    async def aggregate(self, master: str, jid: str, data: MessageDataType, redis_client: redis.Redis) -> None:
-        if self.metric:
-            timestamp = time()
-            await redis_client.set(name=f'job:{jid}:new_time', value=timestamp)
-            self.metric.labels(
-                master=master,
-                fun=data['fun'],
-                minions=data['minions']
-            ).inc()
-            logger.debug("Metric '%s' has been increased (Master: '%s')", self.name, master)
+    @property
+    def labels(self) -> list[str]:
+        return ['master', 'fun', 'minions']
+
+    @property
+    def tag_pattern(self) -> re.Pattern:
+        return self._TAG_PATTERN
+
+    def can_handle(self, tag: str) -> bool:
+        return bool(self.tag_pattern.match(tag))
+
+    async def _aggregate(self, jid: str, data: MessageDataType) -> None:
+        timestamp = time()
+        await self.redis_client.set(name=f'job:{jid}:new_time', value=timestamp)
+        self.metric.labels(
+            master=self.master,
+            fun=data['fun'],
+            minions=data['minions']
+        ).inc()  # type: ignore[attr-defined]
+        logger.debug("Metric '%s' has been increased (Master: '%s')", self.name, self.master)

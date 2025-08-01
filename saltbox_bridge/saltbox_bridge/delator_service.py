@@ -8,7 +8,8 @@ import salt.config  # type: ignore[import-untyped]
 from faststream import context
 from prometheus_client import CollectorRegistry
 
-from saltbox_bridge.salt_metrics.utils.metrics_factory import MetricsFactory
+from saltbox_bridge.salt_metrics.service.metric_router import MetricRouter
+from saltbox_bridge.salt_metrics.utils.metrics_factory import MetricsRegistry
 
 if TYPE_CHECKING:
     from faststream.redis import RedisBroker
@@ -20,7 +21,6 @@ from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.exceptions import StopProcessing
-from saltbox_bridge.metric_service import start_prometheus_client
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.salt_handlers.job_return_handler import (
     JobReturnForTaskMessageHandler,
@@ -29,8 +29,7 @@ from saltbox_bridge.salt_handlers.job_return_handler import (
 from saltbox_bridge.salt_handlers.minion_started_handler import MinionStartedMessageHandler
 from saltbox_bridge.salt_handlers.new_job_handler import JobNewForTaskMessageHandler, JobNewMessageHandler
 from saltbox_bridge.salt_handlers.presence_handler import PresenceMessageHandler
-from saltbox_bridge.salt_metrics.job_new_metric import JobNewMetric
-from saltbox_bridge.salt_metrics.job_return_metric import JobReturnMetric
+from saltbox_bridge.salt_metrics.service.metric_service import start_prometheus_client
 from saltbox_bridge.utils.gpg import SaltBoxCrypt
 
 LOGGER = logging.getLogger(__name__)
@@ -61,21 +60,17 @@ class SaltBridge:
             'salt_opts': self.salt_opts,
         }
 
-        mf = MetricsFactory(registry=metric_registry)
-
-        job_new_metric_labels = ['master', 'fun', 'minions']
-        job_new_metric = mf.get(metric_clazz=JobNewMetric, name='job_new', desc='', labels=job_new_metric_labels)
-
-        job_ret_metric_labels = ['master', 'minion_id']
-        job_ret_metric = mf.get(metric_clazz=JobReturnMetric, name='job_ret', desc='', labels=job_ret_metric_labels)
+        mf = MetricsRegistry(registry=metric_registry, redis_client=self.redis_client, salt_opts=self.salt_opts)
+        all_metrics = mf.create_all()
+        self.metric_router = MetricRouter(all_metrics)
 
         self.handlers = {
-            JobNewMessageHandler(**handlers_args, metric=job_new_metric),
-            JobNewForTaskMessageHandler(**handlers_args, metric=None),
-            JobReturnMessageHandler(**handlers_args, metric=job_ret_metric),
-            JobReturnForTaskMessageHandler(**handlers_args, metric=None),
-            PresenceMessageHandler(**handlers_args, metric=None),
-            MinionStartedMessageHandler(**handlers_args, metric=None),
+            JobNewMessageHandler(**handlers_args),
+            JobNewForTaskMessageHandler(**handlers_args),
+            JobReturnMessageHandler(**handlers_args),
+            JobReturnForTaskMessageHandler(**handlers_args),
+            PresenceMessageHandler(**handlers_args),
+            MinionStartedMessageHandler(**handlers_args),
         }
 
     async def start(self) -> None:
@@ -91,9 +86,8 @@ class SaltBridge:
         await start_prometheus_client(registry=metric_registry)
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
-            while True:
-                await self.process(event_bus.get_event(full=True))
-                await asyncio.sleep(0.00001)
+            for event in event_bus.iter_events(full=True):
+                await self.process(event)
 
     async def process(self, event: dict | None) -> None:
         if not event:
@@ -103,6 +97,7 @@ class SaltBridge:
         data = event['data']
 
         LOGGER.debug('%s got event with tag "%s"', __name__, tag)
+        await self.metric_router.route_and_aggregate(tag=tag, data=data)
 
         try:
             for handler in self.handlers:

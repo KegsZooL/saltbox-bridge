@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import abc
 import re
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import redis.asyncio as redis
 from faststream.redis import RedisBroker
 from salt.client import LocalClient  # type: ignore
 from saltbox_bridge_messages import BridgeMessageBase
-
-if TYPE_CHECKING:
-    from saltbox_bridge.salt_metrics.base_metric import BaseMetric
 
 MessageDataType = dict[str, Any]
 
@@ -29,12 +26,10 @@ class BaseMessageHandler(abc.ABC):
         redis_client: redis.Redis,
         broker: RedisBroker,
         salt_opts: dict,
-        metric: BaseMetric | None
     ) -> None:
         self.redis_client = redis_client
         self.broker = broker
         self.salt_opts = salt_opts
-        self.metric = metric
 
     @property
     def salt_client(self) -> LocalClient:

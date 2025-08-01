@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from prometheus_client import CollectorRegistry, disable_created_metrics, start_http_server
-from salt.utils.ssdp import asyncio
 
 from saltbox_bridge.salt_metrics.metric_settings import MetricSettings
 
@@ -16,7 +16,7 @@ async def start_prometheus_client(registry: CollectorRegistry) -> None:
         logger.info("Starting Prometheus metrics server on port %s", settings.port)
 
         try:
-            disable_created_metrics()
+            disable_created_metrics()  # type: ignore[no-untyped-call]
             _ = start_http_server(
                   port=settings.port,
                   addr=settings.addr,
