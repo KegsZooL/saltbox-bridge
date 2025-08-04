@@ -20,6 +20,7 @@ class BaseMetric(abc.ABC):
         name: Metric name
         desc: Description of the metric
         redis_client: Redis client
+        labels: Labels displayed in Grafana UI
         salt_opts: Master config
     """
     def __init__(
@@ -41,7 +42,12 @@ class BaseMetric(abc.ABC):
         self.metric = self._create()
 
     @abc.abstractmethod
-    def _create(self) -> MetricWrapperBase: ...
+    def can_handle(self, tag: str) -> bool:
+        """
+        Determine this metric should process an event with the given tag
+
+        :param tag: The event tag from the salt bus (e.g., 'salt/job/<jid>/...')
+        """
 
     @property
     @abc.abstractmethod
@@ -52,12 +58,7 @@ class BaseMetric(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def can_handle(self, tag: str) -> bool:
-        """
-        Determine this metric should process an event with the given tag
-
-        :param tag: The event tag from the salt bus (e.g., 'salt/job/<jid>/...')
-        """
+    def _create(self) -> MetricWrapperBase: ...
 
     @abc.abstractmethod
     async def aggregate(self, tag: str, data: MessageDataType) -> None: ...
@@ -79,3 +80,9 @@ class JobBaseMetric(BaseMetric, abc.ABC):
         if match:
             jid = match.group('jid')
             await self._aggregate(jid=jid, data=data)
+
+
+class EventBaseMetric(BaseMetric, abc.ABC):
+
+    def can_handle(self, tag: str) -> bool:
+        return True

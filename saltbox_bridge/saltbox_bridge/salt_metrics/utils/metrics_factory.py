@@ -6,7 +6,7 @@ from prometheus_client import CollectorRegistry
 from redis import asyncio as aioredis
 
 from saltbox_bridge.salt_metrics.base_metric import BaseMetric
-from saltbox_bridge.salt_metrics.metric_settings import METRIC_SPECS
+from saltbox_bridge.salt_metrics.metric_specification import METRIC_SPECS
 
 logger = logging.getLogger(__name__)
 

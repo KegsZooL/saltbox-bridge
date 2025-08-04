@@ -16,20 +16,20 @@ class JobNewMetric(JobBaseMetric):
 
     _TAG_PATTERN = re.compile(r'^salt/job/(?P<jid>\d{20})/new$')
 
-    def _create(self) -> Counter:
-        return Counter(
-            name=self.name, documentation=self.desc, labelnames=self.labels, registry=self.registry)
+    def can_handle(self, tag: str) -> bool:
+        return bool(self.tag_pattern.match(tag))
 
     @property
     def labels(self) -> list[str]:
         return ['master', 'fun', 'minions']
 
+    def _create(self) -> Counter:
+        return Counter(
+            name=self.name, documentation=self.desc, labelnames=self.labels, registry=self.registry)
+
     @property
     def tag_pattern(self) -> re.Pattern:
         return self._TAG_PATTERN
-
-    def can_handle(self, tag: str) -> bool:
-        return bool(self.tag_pattern.match(tag))
 
     async def _aggregate(self, jid: str, data: MessageDataType) -> None:
         timestamp = time()

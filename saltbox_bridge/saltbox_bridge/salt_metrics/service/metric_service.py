@@ -5,31 +5,29 @@ import logging
 
 from prometheus_client import CollectorRegistry, disable_created_metrics, start_http_server
 
-from saltbox_bridge.salt_metrics.metric_settings import MetricSettings
+from saltbox_bridge.config import SETTINGS
 
 logger = logging.getLogger(__name__)
 
 
 async def start_prometheus_client(registry: CollectorRegistry) -> None:
     def run() -> None:
-        settings = MetricSettings()
-        logger.info("Starting Prometheus metrics server on port %s", settings.port)
-
+        logger.info("Starting Prometheus metrics server on port %s", SETTINGS.prometheus_client_port)
         try:
             disable_created_metrics()  # type: ignore[no-untyped-call]
             _ = start_http_server(
-                  port=settings.port,
-                  addr=settings.addr,
+                  port=SETTINGS.prometheus_client_port,
+                  addr=SETTINGS.prometheus_client_addr,
                   registry=registry,
-                  certfile=settings.certfile,
-                  keyfile=settings.keyfile,
-                  client_cafile=settings.client_cafile,
-                  client_capath=settings.client_capath,
-                  client_auth_required=settings.client_auth_required
+                  certfile=SETTINGS.prometheus_client_certfile,
+                  keyfile=SETTINGS.prometheus_client_keyfile,
+                  client_cafile=SETTINGS.prometheus_client_cafile,
+                  client_capath=SETTINGS.prometheus_client_capath,
+                  client_auth_required=SETTINGS.prometheus_client_auth_required
                 )
             logger.info("Prometheus metrics server launched")
         except Exception as ex:
-            logger.exception("Failed to start prometheus_client on '%s' port", settings.port)
+            logger.exception("Failed to start prometheus_client on '%s' port", SETTINGS.prometheus_client_port)
             raise ex
 
     await asyncio.to_thread(run)

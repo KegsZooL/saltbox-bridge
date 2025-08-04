@@ -16,6 +16,13 @@ class JobReturnMetric(JobBaseMetric):
 
     _TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
 
+    def can_handle(self, tag: str) -> bool:
+        return bool(self.tag_pattern.match(tag))
+
+    @property
+    def labels(self) -> list[str]:
+        return ['master', 'minion_id']
+
     def _create(self) -> Gauge:
         return Gauge(
             name=self.name,
@@ -25,15 +32,8 @@ class JobReturnMetric(JobBaseMetric):
         )
 
     @property
-    def labels(self) -> list[str]:
-        return ['master', 'minion_id']
-
-    @property
     def tag_pattern(self) -> re.Pattern:
         return self._TAG_PATTERN
-
-    def can_handle(self, tag: str) -> bool:
-        return bool(self.tag_pattern.match(tag))
 
     async def _aggregate(self, jid: str, data: MessageDataType) -> None:
         job_creation_time = await self.redis_client.get(name=f'job:{jid}:new_time')
