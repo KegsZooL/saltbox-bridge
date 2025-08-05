@@ -17,19 +17,18 @@ class MetricsRegistry:
             registry: CollectorRegistry,
             redis_client: aioredis.Redis,
             salt_opts: dict,
-            specs: list[dict] = METRIC_SPECS
     ) -> None:
         self._registry = registry
         self._redis_client = redis_client
         self._salt_opts = salt_opts
-        self._specs = specs
         self._instances: dict[str, BaseMetric] = {}
 
-    def __get(self, key: str) -> BaseMetric:
-        if key not in self._instances:
-            spec = next((spec for spec in self._specs if spec['key'] == key), None)
-            if spec is not None:
-                self._instances[key] = spec['clazz'](
+    def _get(self, spec: dict) -> BaseMetric:
+        if spec is not None:
+            metric_clazz = spec['clazz']
+            if issubclass(metric_clazz, BaseMetric):
+                key = spec['key']
+                self._instances[key] = metric_clazz(
                     registry=self._registry,
                     name=key,
                     desc=spec['desc'],
@@ -38,8 +37,8 @@ class MetricsRegistry:
                     salt_opts=self._salt_opts
                 )
             else:
-                logger.error('No metric spec found for key: %s', key)
-        return self._instances[key]
+                logger.error('Metric class &s does not extend BaseMetric class', metric_clazz)
+        return self._instances[spec['key']]
 
     def create_all(self) -> list[BaseMetric]:
-        return [self.__get(spec['key']) for spec in self._specs]
+        return [self._get(spec) for spec in METRIC_SPECS]

@@ -12,11 +12,12 @@ logger = logging.getLogger(__name__)
 
 async def start_prometheus_client(registry: CollectorRegistry) -> None:
     def run() -> None:
-        logger.info("Starting Prometheus metrics server on port %s", SETTINGS.prometheus_client_port)
+        port = SETTINGS.prometheus_client_port
+        logger.info("Starting Prometheus metrics server on port %s", port)
         try:
             disable_created_metrics()  # type: ignore[no-untyped-call]
             _ = start_http_server(
-                  port=SETTINGS.prometheus_client_port,
+                  port=port,
                   addr=SETTINGS.prometheus_client_addr,
                   registry=registry,
                   certfile=SETTINGS.prometheus_client_certfile,
@@ -27,7 +28,7 @@ async def start_prometheus_client(registry: CollectorRegistry) -> None:
                 )
             logger.info("Prometheus metrics server launched")
         except Exception as ex:
-            logger.exception("Failed to start prometheus_client on '%s' port", SETTINGS.prometheus_client_port)
+            logger.exception("Failed to start prometheus_client on '%s' port", port)
             raise ex
 
     await asyncio.to_thread(run)

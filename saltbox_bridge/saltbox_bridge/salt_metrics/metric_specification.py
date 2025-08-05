@@ -9,25 +9,25 @@ METRIC_SPECS = [
     {
         'key': 'job_new',
         'clazz': JobNewMetric,
-        'desc': '',
+        'desc': 'Total number of new jobs received',
         'labels': JobNewMetric.labels
     },
     {
         'key': 'job_ret',
         'clazz': JobReturnMetric,
-        'desc': '',
+        'desc': 'Total number of job returns',
         'labels': JobReturnMetric.labels
     },
     {
         'key': 'event_total',
         'clazz': TaggedEventCountMetric,
-        'desc': '',
+        'desc': 'Total number of tagged events',
         'labels': TaggedEventCountMetric.labels
     },
     {
         'key': 'event_payload_size',
         'clazz': EventPayloadSizeMetric,
-        'desc': '',
+        'desc': 'Sum of payload sizes for all tagged events',
         'labels': EventPayloadSizeMetric.labels
     }
 ]

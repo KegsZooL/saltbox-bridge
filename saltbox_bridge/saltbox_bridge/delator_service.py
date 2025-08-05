@@ -9,7 +9,7 @@ from faststream import context
 from prometheus_client import CollectorRegistry
 
 from saltbox_bridge.salt_metrics.service.metric_router import MetricRouter
-from saltbox_bridge.salt_metrics.utils.metrics_factory import MetricsRegistry
+from saltbox_bridge.salt_metrics.utils.metric_registry import MetricsRegistry
 
 if TYPE_CHECKING:
     from faststream.redis import RedisBroker
