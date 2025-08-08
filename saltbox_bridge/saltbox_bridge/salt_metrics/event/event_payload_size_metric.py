@@ -5,10 +5,10 @@ import sys
 from prometheus_client import Summary
 
 from saltbox_bridge.salt_handlers.base_handler import MessageDataType
-from saltbox_bridge.salt_metrics.base_metric import EventBaseMetric
+from saltbox_bridge.salt_metrics.base_metric import BaseEventMetric
 
 
-class EventPayloadSizeMetric(EventBaseMetric):
+class EventPayloadSizeMetric(BaseEventMetric):
 
     @property
     def labels(self) -> list[str]:

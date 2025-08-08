@@ -4,6 +4,7 @@ from saltbox_bridge.salt_metrics.event.event_payload_size_metric import EventPay
 from saltbox_bridge.salt_metrics.event.tagged_event_metric import TaggedEventCountMetric
 from saltbox_bridge.salt_metrics.job.job_new_metric import JobNewMetric
 from saltbox_bridge.salt_metrics.job.job_return_metric import JobReturnMetric
+from saltbox_bridge.salt_metrics.task_metric import TaskMetric
 
 METRIC_SPECS = [
     {
@@ -29,5 +30,11 @@ METRIC_SPECS = [
         'clazz': EventPayloadSizeMetric,
         'desc': 'Sum of payload sizes for all tagged events',
         'labels': EventPayloadSizeMetric.labels
-    }
+    },
+    {
+        'key': 'task_status',
+        'clazz': TaskMetric,
+        'desc': 'Task status metric',
+        'labels': TaskMetric.labels
+    },
 ]

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import abc
-import re
-from abc import abstractmethod
 
+import redis.asyncio as redis
 from prometheus_client import CollectorRegistry
 from prometheus_client.metrics import MetricWrapperBase
-from redis.asyncio.client import Redis
 
 from saltbox_bridge.salt_handlers.base_handler import MessageDataType
 
@@ -28,7 +26,7 @@ class BaseMetric(abc.ABC):
             registry: CollectorRegistry,
             name: str,
             desc: str,
-            redis_client: Redis,
+            redis_client: redis.Redis,
             labels: list[str] | None,
             salt_opts: dict
     ) -> None:
@@ -64,25 +62,13 @@ class BaseMetric(abc.ABC):
     async def aggregate(self, tag: str, data: MessageDataType) -> None: ...
 
 
-class JobBaseMetric(BaseMetric, abc.ABC):
+class BaseEventMetric(BaseMetric, abc.ABC):
     """
-    A base metric class for handling salt job event
+    A base metric for handling generic salt events without strict tag filtering
+
+    This class processes all incoming events from the salt event bus
+    and is intended for metrics that aggregate data across multiple
+    event types, rather than filtering for specific tag patterns
     """
-    @property
-    @abstractmethod
-    def tag_pattern(self) -> re.Pattern: ...
-
-    @abstractmethod
-    async def _aggregate(self, jid: str, data: MessageDataType) -> None: ...
-
-    async def aggregate(self, tag: str, data: MessageDataType) -> None:
-        match = self.tag_pattern.match(tag)
-        if match:
-            jid = match.group('jid')
-            await self._aggregate(jid=jid, data=data)
-
-
-class EventBaseMetric(BaseMetric, abc.ABC):
-
     def can_handle(self, tag: str) -> bool:
         return True

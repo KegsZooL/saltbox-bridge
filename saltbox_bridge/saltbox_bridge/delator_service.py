@@ -8,8 +8,8 @@ import salt.config  # type: ignore[import-untyped]
 from faststream import context
 from prometheus_client import CollectorRegistry
 
+from saltbox_bridge.salt_metrics.service.metric_registry import MetricsRegistry
 from saltbox_bridge.salt_metrics.service.metric_router import MetricRouter
-from saltbox_bridge.salt_metrics.utils.metric_registry import MetricsRegistry
 
 if TYPE_CHECKING:
     from faststream.redis import RedisBroker
@@ -82,8 +82,8 @@ class SaltBridge:
         context.set_global('core_connector', core_connector)
         context.set_global('master_id', master_id)
 
-        await core_connector.wait_success_connection()
         await start_prometheus_client(registry=metric_registry)
+        await core_connector.wait_success_connection()
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
             for event in event_bus.iter_events(full=True):

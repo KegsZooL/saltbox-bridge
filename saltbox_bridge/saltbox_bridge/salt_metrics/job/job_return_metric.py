@@ -7,14 +7,14 @@ from time import time
 from prometheus_client import Gauge
 
 from saltbox_bridge.salt_handlers.base_handler import MessageDataType
-from saltbox_bridge.salt_metrics.base_metric import JobBaseMetric
+from saltbox_bridge.salt_metrics.job.base_job_metric import BaseJobMetric
 
 logger = logging.getLogger(__name__)
 
 
-class JobReturnMetric(JobBaseMetric):
+class JobReturnMetric(BaseJobMetric):
 
-    _TAG_PATTERN = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
+    _TAG_PATTERN = re.compile(r'^salt/job/(?P<jid>\d{20})(?:-t(?P<tid>[a-f0-9]{24}))?/ret/(?P<mid>.+)$')
 
     def can_handle(self, tag: str) -> bool:
         return bool(self.tag_pattern.match(tag))
@@ -35,14 +35,15 @@ class JobReturnMetric(JobBaseMetric):
     def tag_pattern(self) -> re.Pattern:
         return self._TAG_PATTERN
 
-    async def _aggregate(self, jid: str, data: MessageDataType) -> None:
-        job_creation_time = await self.redis_client.get(name=f'job:{jid}:new_time')
+    async def _aggregate(self, jid: str, tid: str | None, data: MessageDataType) -> None:
+        redis_key = f'job:{jid}{"-t" + tid if tid else ""}:new_time'
+        job_creation_time = await self.redis_client.get(name=redis_key)
         if job_creation_time is not None:
             job_creation_time = float(job_creation_time)
             duration = await self._set_job_duration(job_creation_time=job_creation_time, data=data)
             logger.debug('Job %s processing time: %f seconds', jid, duration)
         else:
-            logger.info("Failed to extract job creation time from redis | jid: %s", jid)
+            logger.debug("Failed to extract job creation time from redis | jid=%s, tid=%s", jid, tid)
 
     async def _set_job_duration(self, job_creation_time: float, data: MessageDataType) -> float:
         job_creation_time = float(job_creation_time)
