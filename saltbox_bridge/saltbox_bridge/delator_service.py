@@ -104,6 +104,7 @@ class SaltBridge:
             for handler in self.handlers:
                 await handler.handle(tag, data)
         except StopProcessing:
+
             LOGGER.debug('End message processing')
             return
 

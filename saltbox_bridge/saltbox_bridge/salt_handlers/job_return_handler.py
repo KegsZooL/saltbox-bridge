@@ -5,13 +5,13 @@ import re
 from typing import Any
 
 from salt.utils import json  # type: ignore
-from saltbox_bridge_messages import BridgeMinionGrainsMessage
+from saltbox_bridge_messages import BridgeInventoryDataSavedMessage, BridgeMinionGrainsMessage
 
 from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.exceptions import StopProcessing
 from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class JobReturnMessageHandler(BaseMessageHandler):
@@ -28,13 +28,8 @@ class JobReturnMessageHandler(BaseMessageHandler):
         function = data['fun']
         data_json = json.dumps(data)
 
-        LOGGER.info('Job %s return for %s, function %s', jid, mid, function)
+        logger.info('Job %s return for %s, function %s', jid, mid, function)
 
-        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
-
-        raise StopProcessing()
-
-    async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str) -> None:
         hash_name = f'job:{jid}:return'
         async with self.redis_client.pipeline(transaction=True) as pipe:
             pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
@@ -46,13 +41,34 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         if function == 'grains.items':
             await self._process_grains(mid, data['return'])
+        elif function in ('state.apply', 'state.sls') and 'inventory' in data['fun_args']:
+            logger.debug('Got inventory data for %s', mid)
+            await self._notify_on_inventory(jid=jid, mid=mid, data=data)
+
+        raise StopProcessing()
+
+    async def _notify_on_inventory(self, jid: str, mid: str, data: dict[str, Any]) -> None:
+        for mod, mod_data in data['return'].items():  # noqa: B007
+            if mod_data['name'] == 'inventory.get':
+                break
+        else:
+            logger.error('Failed to find inventory.get data for JID=%s, minion=%s', jid, mid)
+            return
+
+        message = BridgeInventoryDataSavedMessage(
+            master=self.master_id,
+            jid=jid,
+            minions=[mid,],
+            path=['return', mod, 'changes', 'ret'],
+        )
+        await self.send_message(message=message, message_tag='inventory_saved')
 
     async def _process_grains(self, mid: str, grains: dict[str, Any]) -> None:
-        LOGGER.debug('Processing grains for %s', mid)
+        logger.debug('Processing grains for %s', mid)
         if not grains:
             return
 
-        message = BridgeMinionGrainsMessage(master=self.salt_opts['salt_box_master_id'], grains=grains)
+        message = BridgeMinionGrainsMessage(master=self.master_id, grains=grains)
         await self.send_message(message=message, message_tag='grains')
 
 
@@ -76,7 +92,7 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
         function = data['fun']
         data_json = json.dumps(data)
 
-        LOGGER.info('Job %s (task %s) return for %s, function %s', jid, tid, mid, function)
+        logger.info('Job %s (task %s) return for %s, function %s', jid, tid, mid, function)
 
         await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
         await self._process_task(jid=jid, tid=tid, data_json=data_json)

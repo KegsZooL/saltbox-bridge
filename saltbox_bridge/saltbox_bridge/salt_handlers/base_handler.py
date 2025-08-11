@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 import re
-from typing import Any
+from typing import Any, cast
 
 import redis.asyncio as redis
 from faststream.redis import RedisBroker
@@ -34,6 +34,10 @@ class BaseMessageHandler(abc.ABC):
     @property
     def salt_client(self) -> LocalClient:
         return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
+
+    @property
+    def master_id(self) -> str:
+        return cast(str, self.salt_opts['salt_box_master_id'])
 
     async def send_message(self, message: BridgeMessageBase, message_tag: str) -> None:
         async with self.broker as br:
