@@ -30,6 +30,11 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         logger.info('Job %s return for %s, function %s', jid, mid, function)
 
+        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
+
+        raise StopProcessing()
+
+    async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str) -> None:
         hash_name = f'job:{jid}:return'
         async with self.redis_client.pipeline(transaction=True) as pipe:
             pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
@@ -41,11 +46,10 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         if function == 'grains.items':
             await self._process_grains(mid, data['return'])
+        # TODO (a.karmanov) :: Notify also on `salt TGT inventory.get`
         elif function in ('state.apply', 'state.sls') and 'inventory' in data['fun_args']:
             logger.debug('Got inventory data for %s', mid)
             await self._notify_on_inventory(jid=jid, mid=mid, data=data)
-
-        raise StopProcessing()
 
     async def _notify_on_inventory(self, jid: str, mid: str, data: dict[str, Any]) -> None:
         for mod, mod_data in data['return'].items():  # noqa: B007
