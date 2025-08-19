@@ -20,6 +20,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
     """
 
     tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
+    INVENTORY_SAVED_MSG_TAG = 'inventory_saved'
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         jid = match.group('jid')
@@ -46,12 +47,28 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         if function == 'grains.items':
             await self._process_grains(mid, data['return'])
-        # TODO (a.karmanov) :: Notify also on `salt TGT inventory.get`
+        elif function == 'inventory.get':
+            logger.debug('Got inventory.get return for %s', mid)
+            await self._notify_on_inventory_fun(jid=jid, mid=mid, data=data)
         elif function in ('state.apply', 'state.sls') and 'inventory' in data['fun_args']:
-            logger.debug('Got inventory data for %s', mid)
-            await self._notify_on_inventory(jid=jid, mid=mid, data=data)
+            logger.debug('Got inventory state return for %s', mid)
+            await self._notify_on_inventory_state(jid=jid, mid=mid, data=data)
 
-    async def _notify_on_inventory(self, jid: str, mid: str, data: dict[str, Any]) -> None:
+    async def _notify_on_inventory_fun(self, jid: str, mid: str, data: dict[str, Any]) -> None:
+        if data['retcode'] != 0:
+            logger.warning('inventory.get failed for JID=%s, minion=%s', jid, mid)
+            return
+
+        message = BridgeInventoryDataSavedMessage(
+            master=self.master_id,
+            jid=jid,
+            minions=[mid,],
+            path=['return'],
+        )
+        await self.send_message(message=message, message_tag=self.INVENTORY_SAVED_MSG_TAG)
+
+    async def _notify_on_inventory_state(self, jid: str, mid: str, data: dict[str, Any]) -> None:
+        # TODO (a.karmanov): <US372> Check retcode
         for mod, mod_data in data['return'].items():  # noqa: B007
             if mod_data['name'] == 'inventory.get':
                 break
@@ -65,7 +82,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
             minions=[mid,],
             path=['return', mod, 'changes', 'ret'],
         )
-        await self.send_message(message=message, message_tag='inventory_saved')
+        await self.send_message(message=message, message_tag=self.INVENTORY_SAVED_MSG_TAG)
 
     async def _process_grains(self, mid: str, grains: dict[str, Any]) -> None:
         logger.debug('Processing grains for %s', mid)
