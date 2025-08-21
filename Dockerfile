@@ -37,6 +37,7 @@ fi
 echo "${SALT_TARBALL_SHA512} ${_SALT_TARBALL_FILENAME}" | sha512sum --check
 tar -xavf "${_SALT_TARBALL_FILENAME}" --directory="${SALT_PATH_PREFIX}/"
 find "${SALT_PATH_PREFIX}/salt/" -maxdepth 1 -type f -executable -exec ln -s {} /usr/local/bin/ \;
+ln -s "${SALT_PATH_PREFIX}/salt/bin/python3" /usr/local/bin/
 EOF
 
 FROM salt-base AS salt-master-base
@@ -86,9 +87,8 @@ LABEL release='1'
 ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
 COPY saltbox_bridge/ "$SALTBOX_BRIDGE_SRC_PATH"
 RUN --mount=type=cache,target=/root/.cache/pip/ \
-  "$PIP_CMD" install \
-  --requirement "${SALTBOX_BRIDGE_SRC_PATH}/requirements.txt" \
-  --target=''
+  "$PIP_CMD" install uv
+
 ENV SALTBOX_DEV_MODE=1
 # Respective repository should be mounted
 VOLUME /mnt/saltbox-bridge-messages/
