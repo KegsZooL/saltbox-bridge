@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 import shutil
 import subprocess
-from typing import Any, Iterable
+from collections.abc import Iterable, Sequence
+from typing import Any
 from xml.etree import ElementTree
 
 from salt.exceptions import (  # type: ignore[import-untyped]
@@ -45,6 +47,36 @@ CATEGORIES = (
 )
 
 
+class Omit:
+    """ Skip field from output """
+
+class Aggregate:
+    """ Aggregate named values to list """
+
+
+@dataclasses.dataclass
+class Rename:
+    """ Save value with another name """
+    name: str
+
+
+# Transformation map for fields. Renamed field will be processed again. Beware of rename loops!
+_TWISTS = {
+    'local_groups': {
+        'id': Rename('gid'),
+        'member': Rename('members'),
+        'members': Aggregate(),
+    }
+}
+
+
+@dataclasses.dataclass
+class Field:
+    name: str
+    val: Any
+    old_names: set[str] = dataclasses.field(default_factory=set)
+
+
 def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
     for cat in categories:
         if cat not in CATEGORIES:
@@ -53,11 +85,42 @@ def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
     return categories
 
 
-def _element_to_dict(elem: ElementTree.Element) -> dict[str, Any]:
-    return {child.tag.lower(): child.text for child in elem}
+def _transform(data: Sequence[Field], category: str) -> dict[str, Any]:
+    stack = list(reversed(data))
+    result: dict[str, Any] = {}
+
+    while stack:
+        field = stack.pop()
+        match (twist := _TWISTS.get(category, {}).get(field.name)):
+            case None:
+                result[field.name] = field.val
+            case Omit():
+                continue
+            case Rename():
+                if twist.name in field.old_names:
+                    msg = f'Renaming loop detected for category {category} field {twist.name}'
+                    raise SaltException(msg)
+                field.old_names.add(field.name)
+                field.name = twist.name
+                stack.append(field)
+            case Aggregate():
+                try:
+                    result.setdefault(field.name, []).append(field.val)
+                except AttributeError as err:
+                    raise SaltException(err)
+            case _:
+                msg = 'Failed to transform inventory data'
+                raise SaltException(msg)
+    return result
+
+
+def _element_to_dict(elem: ElementTree.Element, category: str) -> dict[str, Any]:
+    data = [Field(name=child.tag.lower(), val=child.text or '') for child in elem]
+    return _transform(data, category=category)
+
 
 def _inventory_to_dict(data: str, categories: Iterable[str] = CATEGORIES) -> dict[str, Any]:
-    parsed: dict[str, Any] = { }
+    parsed: dict[str, Any] = {}
 
     try:
         root = ElementTree.fromstring(data)
@@ -72,7 +135,8 @@ def _inventory_to_dict(data: str, categories: Iterable[str] = CATEGORIES) -> dic
 
     for category in categories:
         parsed[category] = [
-            _element_to_dict(s) for s in content.findall(category.upper())
+            _element_to_dict(s, category)
+            for s in content.findall(category.upper())
         ]
 
     return parsed
@@ -88,7 +152,7 @@ def get_inventory_cmd() -> list[str] | None:
     return None
 
 
-def get(only: list[str] | None = None, exclude: list[str] | None = None ) -> dict[str, Any]:
+def get(only: list[str] | None = None, exclude: list[str] | None = None) -> dict[str, Any]:
     """
     Get inventory data
 
