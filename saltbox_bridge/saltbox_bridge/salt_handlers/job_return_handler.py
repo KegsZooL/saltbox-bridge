@@ -21,6 +21,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
     tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
     INVENTORY_SAVED_MSG_TAG = 'inventory_saved'
+    INVENTORY_STATE = 'inventory'
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         jid = match.group('jid')
@@ -34,6 +35,25 @@ class JobReturnMessageHandler(BaseMessageHandler):
         await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
 
         raise StopProcessing()
+
+    @classmethod
+    def _inventory_state_predicate(cls, data: dict[str, Any]) -> bool:
+        fun = data['fun']
+        if fun not in ('state.apply', 'state.sls'):
+            return False
+
+        fun_args = data['fun_args']
+        if cls.INVENTORY_STATE in fun_args:
+            return True
+
+        # Check inventory in kwargs
+        for arg in fun_args:
+            if isinstance(arg, dict) and arg.get('__kwarg__'):
+                mods = arg.get('mods')
+                if mods == cls.INVENTORY_STATE or (isinstance(mods, list) and cls.INVENTORY_STATE in mods):
+                    return True
+
+        return False
 
     async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str) -> None:
         hash_name = f'job:{jid}:return'
@@ -50,7 +70,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
         elif function == 'inventory.get':
             logger.debug('Got inventory.get return for %s', mid)
             await self._notify_on_inventory_fun(jid=jid, mid=mid, data=data)
-        elif function in ('state.apply', 'state.sls') and 'inventory' in data['fun_args']:
+        elif self._inventory_state_predicate(data):
             logger.debug('Got inventory state return for %s', mid)
             await self._notify_on_inventory_state(jid=jid, mid=mid, data=data)
 
