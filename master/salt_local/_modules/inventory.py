@@ -1,11 +1,26 @@
+# Copyright 2025 Anton Karmanov
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from __future__ import annotations
 
-import dataclasses
+from dataclasses import dataclass
 import logging
 import shutil
 import subprocess
 from collections.abc import Iterable, Sequence
-from typing import Any
+from typing import Any, Callable, TypeAlias, Literal
 from xml.etree import ElementTree
 
 from salt.exceptions import (  # type: ignore[import-untyped]
@@ -17,10 +32,7 @@ from salt.exceptions import (  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
-COMMANDS_MAPPING = {
-    'fusioninventory-agent': ['--scan-homedirs', '--local', '-'],
-    'ocsinventory-agent': ['--scan-homedirs', '--stdout'],
-}
+InventoryAgentStr = Literal['fusioninventory', 'ocsinventory']
 
 # FusionInventory has also:
 #   - 'envs'
@@ -47,35 +59,64 @@ CATEGORIES = (
 )
 
 
-class Omit:
-    """ Skip field from output """
-
-class Aggregate:
-    """ Aggregate named values to list """
+ProcFunctorType = Callable[[Sequence[tuple[str, Any]]], dict[str, Any]]
 
 
-@dataclasses.dataclass
-class Rename:
-    """ Save value with another name """
-    name: str
-
-
-# Transformation map for fields. Renamed field will be processed again. Beware of rename loops!
-_TWISTS = {
-    'local_groups': {
-        'id': Rename('gid'),
-        'member': Rename('members'),
-        'members': Aggregate(),
-    }
-}
-
-
-@dataclasses.dataclass
+@dataclass
 class Field:
     name: str
-    val: Any
-    old_names: set[str] = dataclasses.field(default_factory=set)
+    value: Any
 
+
+class TransformationBase:
+    InputData: TypeAlias = Sequence[Field]
+    # To use in base class for "if-based polymorphism"
+    agent: InventoryAgentStr
+
+    @classmethod
+    def process(cls, category: str, data) -> dict[str, Any]:
+        fun = getattr(cls, category, cls._data_to_dict)
+        return fun(data)
+
+    @staticmethod
+    def _data_to_dict(data: InputData) -> dict[str, Any]:
+        return {f.name: f.value for f in data}
+
+    @classmethod
+    def local_groups(cls, data:InputData) -> dict[str, Any]:
+        result = {}
+        for field in data:
+            if field.name == 'id':  # Bad model field
+                result['gid'] = field.value
+            elif field.name == 'member':
+                result.setdefault('members', []).append(field.value)
+            else:
+                result[field.name] = field.value
+        return result
+
+
+class OcsTransformations(TransformationBase):
+    InputData: TypeAlias = TransformationBase.InputData
+    agent = 'ocsinventory'
+
+
+class FusionAgentTransformations(TransformationBase):
+    agent = 'fusioninventory'
+    InputData: TypeAlias = TransformationBase.InputData
+
+    @classmethod
+    def controllers(cls, data: InputData) -> dict[str, Any]:
+        map = cls._data_to_dict(data)
+
+        manufacturer = map.get('manufacturer')
+        caption = map.get('caption')
+        map['manufacturer'] = ' '.join(str(item) for item in (manufacturer, caption,) if item)
+
+        vid = map.get('vendorid')
+        pid = map.get('productid')
+        map['pciid'] = ':'.join(str(item) for item in (vid, pid,) if item)
+
+        return map
 
 def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
     for cat in categories:
@@ -85,38 +126,9 @@ def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
     return categories
 
 
-def _transform(data: Sequence[Field], category: str) -> dict[str, Any]:
-    stack = list(reversed(data))
-    result: dict[str, Any] = {}
-
-    while stack:
-        field = stack.pop()
-        match (twist := _TWISTS.get(category, {}).get(field.name)):
-            case None:
-                result[field.name] = field.val
-            case Omit():
-                continue
-            case Rename():
-                if twist.name in field.old_names:
-                    msg = f'Renaming loop detected for category {category} field {twist.name}'
-                    raise SaltException(msg)
-                field.old_names.add(field.name)
-                field.name = twist.name
-                stack.append(field)
-            case Aggregate():
-                try:
-                    result.setdefault(field.name, []).append(field.val)
-                except AttributeError as err:
-                    raise SaltException(err)
-            case _:
-                msg = 'Failed to transform inventory data'
-                raise SaltException(msg)
-    return result
-
-
 def _element_to_dict(elem: ElementTree.Element, category: str) -> dict[str, Any]:
-    data = [Field(name=child.tag.lower(), val=child.text or '') for child in elem]
-    return _transform(data, category=category)
+    data = [Field(name=child.tag.lower(), value=child.text or '') for child in elem]
+    return INVENTORY_AGENT.transformations.process(category=category, data=data)
 
 
 def _inventory_to_dict(data: str, categories: Iterable[str] = CATEGORIES) -> dict[str, Any]:
@@ -142,14 +154,45 @@ def _inventory_to_dict(data: str, categories: Iterable[str] = CATEGORIES) -> dic
     return parsed
 
 
-def get_inventory_cmd() -> list[str] | None:
-    """
-    Show list of command with args to execute to get inventory data
-    """
-    for bin, flags in COMMANDS_MAPPING.items():
-        if (path := shutil.which(bin)) is not None:
-            return [path] + flags
-    return None
+@dataclass
+class InventoryAgent:
+    name: InventoryAgentStr
+    bin: str
+    inventory_args: list[str]
+    transformations: type[TransformationBase]
+
+    @property
+    def inventory_cmd(self) -> list[str]:
+        return [self.bin] + self.inventory_args
+
+
+KNOWN_AGENTS = (
+    InventoryAgent(
+        'fusioninventory',
+        bin='fusioninventory-agent',
+        inventory_args=['--scan-homedirs', '--local', '-'],
+        transformations=FusionAgentTransformations
+    ),
+    InventoryAgent(
+        'ocsinventory',
+        'ocsinventory-agent',
+        inventory_args=['--scan-homedirs', '--stdout'],
+        transformations=OcsTransformations,
+    ),
+)
+
+
+def _lookup_inventory_agent() -> InventoryAgent:
+    for agent in KNOWN_AGENTS:
+        if shutil.which(agent.bin) is not None:
+            return agent
+    else:
+        agents = tuple(agent.bin for agent in KNOWN_AGENTS)
+        msg = f'Not found compatible inventory agent {agents}'
+        raise CommandNotFoundError(msg)
+
+
+INVENTORY_AGENT = _lookup_inventory_agent()
 
 
 def get(only: list[str] | None = None, exclude: list[str] | None = None) -> dict[str, Any]:
@@ -169,7 +212,6 @@ def get(only: list[str] | None = None, exclude: list[str] | None = None) -> dict
 
         salt '*' inventory.get exclude=['softwares','bios']
     """
-    cmd = get_inventory_cmd()
     if only:
         categories = set(_validate_categories(only))
     else:
@@ -178,14 +220,10 @@ def get(only: list[str] | None = None, exclude: list[str] | None = None) -> dict
     if exclude:
         categories -= set(_validate_categories(exclude))
 
-    if cmd is None:
-        agents = tuple(COMMANDS_MAPPING.keys())
-        msg = f'Not found compatible inventory agent {agents}'
-        raise CommandNotFoundError(msg)
     try:
-        result = subprocess.run(cmd, capture_output=True, check=True)
+        result = subprocess.run(INVENTORY_AGENT.inventory_cmd, capture_output=True, check=True)
     except subprocess.CalledProcessError as err:
-        cmd_str = ' '.join(cmd)
+        cmd_str = ' '.join(INVENTORY_AGENT.inventory_cmd)
         logger.error('Command failed: "%s", stderr follows', cmd_str)
         for line in err.stderr.decode().splitlines():
             logger.error(line)
