@@ -33,7 +33,7 @@ ignore = [
   'N818',   # error-suffix-on-exception-name
   'S314',   # using xml
   'S404',   # suspicious-subprocess-import
-  'S405'    # import xml
+  'S405',    # import xml
   'S603',   # using subprocess
   'TD002',  # Missing author in TODO
   'TD003',  # Found TODO in code
