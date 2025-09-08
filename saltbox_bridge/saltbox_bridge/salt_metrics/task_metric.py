@@ -106,8 +106,8 @@ class TaskMetric(BaseMetric):
         return self._STATUS_FAILED
 
     async def _determine_task_status(self, tid: str) -> str:
-        statuses = await self.redis_client.hgetall(f'tid:{tid}:mid_statuses')
-        unique_statuses = set(statuses.values())
+        statuses: dict[str, bytes] = await self.redis_client.hgetall(f'tid:{tid}:mid_statuses')
+        unique_statuses = {s.decode() for s in statuses.values()}
         if unique_statuses == {self._STATUS_SUCCESS}:
             return self._STATUS_SUCCESS
         elif unique_statuses == {self._STATUS_FAILED}:
