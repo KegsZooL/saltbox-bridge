@@ -15,12 +15,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import shutil
 import subprocess
-from collections.abc import Iterable, Sequence
-from typing import Any, Callable, TypeAlias, Literal
+from collections.abc import Generator, Iterable
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, TypeAlias
 from xml.etree import ElementTree
 
 from salt.exceptions import (  # type: ignore[import-untyped]
@@ -32,7 +33,11 @@ from salt.exceptions import (  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
-InventoryAgentStr = Literal['fusioninventory', 'ocsinventory']
+
+class InventoryAgentEnum(Enum):
+    FI = 'fusioninventory'
+    OCS = 'ocsinventory'
+
 
 # FusionInventory has also:
 #   - 'envs'
@@ -48,6 +53,7 @@ CATEGORIES = (
     'inputs',
     'local_groups',
     'local_users',
+    'memories',
     'networks',
     'ports',
     'softwares',
@@ -59,9 +65,6 @@ CATEGORIES = (
 )
 
 
-ProcFunctorType = Callable[[Sequence[tuple[str, Any]]], dict[str, Any]]
-
-
 @dataclass
 class Field:
     name: str
@@ -69,9 +72,18 @@ class Field:
 
 
 class TransformationBase:
-    InputData: TypeAlias = Sequence[Field]
+    """
+    Inventory data fields transformations to make data consistent between agents.
+
+    In base class it is possible to transform data for any agent including selective
+    operations due to TransformationBase.agent. Subclasses are selective to its' agents.
+
+    OCS Inventory Agent format is preffered for now.
+    """
+
+    InputData: TypeAlias = Iterable[Field]
     # To use in base class for "if-based polymorphism"
-    agent: InventoryAgentStr
+    agent: InventoryAgentEnum
 
     @classmethod
     def process(cls, category: str, data) -> dict[str, Any]:
@@ -81,6 +93,13 @@ class TransformationBase:
     @staticmethod
     def _data_to_dict(data: InputData) -> dict[str, Any]:
         return {f.name: f.value for f in data}
+
+    @staticmethod
+    def _rename_fields(data: InputData, mapping: dict[str, str]) -> Generator[Field]:
+        for field in data:
+            if (new_name := mapping.get(field.name)) is not None:
+                field.name = new_name
+            yield field
 
     @classmethod
     def local_groups(cls, data: InputData) -> dict[str, Any]:
@@ -94,14 +113,28 @@ class TransformationBase:
                 result[field.name] = field.value
         return result
 
+    @classmethod
+    def memories(cls, data: InputData) -> dict[str, Any]:
+        map = cls._data_to_dict(data)
+        if cls.agent is InventoryAgentEnum.FI:
+            map.setdefault('numslots', 0)
+        elif cls.agent is InventoryAgentEnum.OCS:
+            map['numslots'] = map.get('numslots', 1) - 1
+        return map
+
 
 class OcsTransformations(TransformationBase):
     InputData: TypeAlias = TransformationBase.InputData
-    agent = 'ocsinventory'
+    agent = InventoryAgentEnum.OCS
+
+    @classmethod
+    def local_users(cls, data: InputData) -> dict[str, Any]:
+        # FI has `gid` also, but OCS do not. `local_groups.name` may be matched with `local_user.login`
+        return cls._data_to_dict(cls._rename_fields(data=data, mapping={'id_user': 'uid'}))
 
 
 class FusionAgentTransformations(TransformationBase):
-    agent = 'fusioninventory'
+    agent = InventoryAgentEnum.FI
     InputData: TypeAlias = TransformationBase.InputData
 
     @classmethod
@@ -120,21 +153,21 @@ class FusionAgentTransformations(TransformationBase):
 
     @classmethod
     def cpus(cls, data: InputData) -> dict[str, Any]:
-        map = cls._data_to_dict(data)
-        result: dict[str, Any] = {}
+        renamed = cls._rename_fields(
+            data=data,
+            mapping={
+                'arch': 'cpuarch',
+                'core': 'cores',
+                'name': 'type',
+                'thread': 'threads',
+            }
+        )
 
-        for key, val in map.items():
-            if key == 'arch':
-                key = 'cpuarch'
-            elif key == 'core':
-                key = 'cores'
-            elif key == 'name':
-                key = 'type'
-            elif key == 'thread':
-                key = 'threads'
-            result[key] = val
+        return cls._data_to_dict(renamed)
 
-        return result
+    @classmethod
+    def local_users(cls, data: InputData) -> dict[str, Any]:
+        return cls._data_to_dict(cls._rename_fields(data=data, mapping={'id': 'uid'}))
 
 
 def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
@@ -175,26 +208,26 @@ def _inventory_to_dict(data: str, categories: Iterable[str] = CATEGORIES) -> dic
 
 @dataclass
 class InventoryAgent:
-    name: InventoryAgentStr
+    name: InventoryAgentEnum
     bin: str
     inventory_args: list[str]
     transformations: type[TransformationBase]
 
     @property
     def inventory_cmd(self) -> list[str]:
-        return [self.bin] + self.inventory_args
+        return [self.bin, *self.inventory_args]
 
 
 KNOWN_AGENTS = (
     InventoryAgent(
-        'fusioninventory',
+        name=InventoryAgentEnum.FI,
         bin='fusioninventory-agent',
         inventory_args=['--scan-homedirs', '--local', '-'],
         transformations=FusionAgentTransformations
     ),
     InventoryAgent(
-        'ocsinventory',
-        'ocsinventory-agent',
+        name=InventoryAgentEnum.OCS,
+        bin='ocsinventory-agent',
         inventory_args=['--scan-homedirs', '--stdout'],
         transformations=OcsTransformations,
     ),
