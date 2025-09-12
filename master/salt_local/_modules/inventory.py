@@ -83,7 +83,7 @@ class TransformationBase:
         return {f.name: f.value for f in data}
 
     @classmethod
-    def local_groups(cls, data:InputData) -> dict[str, Any]:
+    def local_groups(cls, data: InputData) -> dict[str, Any]:
         result = {}
         for field in data:
             if field.name == 'id':  # Bad model field
@@ -117,6 +117,25 @@ class FusionAgentTransformations(TransformationBase):
         map['pciid'] = ':'.join(str(item) for item in (vid, pid,) if item)
 
         return map
+
+    @classmethod
+    def cpus(cls, data: InputData) -> dict[str, Any]:
+        map = cls._data_to_dict(data)
+        result: dict[str, Any] = {}
+
+        for key, val in map.items():
+            if key == 'arch':
+                key = 'cpuarch'
+            elif key == 'core':
+                key = 'cores'
+            elif key == 'name':
+                key = 'type'
+            elif key == 'thread':
+                key = 'threads'
+            result[key] = val
+
+        return result
+
 
 def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
     for cat in categories:
