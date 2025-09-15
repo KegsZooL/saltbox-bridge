@@ -55,7 +55,7 @@ CATEGORIES = (
     'local_users',
     'memories',
     'networks',
-    'ports',
+    'slots',
     'softwares',
     'sounds',
     'storages',
@@ -111,18 +111,6 @@ class TransformationBase:
             yield field
 
     @classmethod
-    def local_groups(cls, data: InputData) -> dict[str, Any]:
-        result = {}
-        for field in data:
-            if field.name == 'id':  # Bad model field
-                result['gid'] = field.value
-            elif field.name == 'member':
-                result.setdefault('members', []).append(field.value)
-            else:
-                result[field.name] = field.value
-        return result
-
-    @classmethod
     def memories(cls, data: InputData) -> dict[str, Any]:
         map = cls._data_to_dict(data)
         if cls.agent is InventoryAgentEnum.FI:
@@ -140,6 +128,18 @@ class OcsTransformations(TransformationBase):
     def local_users(cls, data: InputData) -> dict[str, Any]:
         # FI has `gid` also, but OCS do not. `local_groups.name` may be matched with `local_user.login`
         return cls._data_to_dict(cls._rename_fields(data=data, mapping={'id_user': 'uid'}))
+
+    @classmethod
+    def local_groups(cls, data: InputData) -> dict[str, Any]:
+        result = {}
+        for field in data:
+            if field.name == 'id_group':
+                result['gid'] = field.value
+            elif field.name == 'member':
+                result['members'] = str(field.value).split(',')
+            else:
+                result[field.name] = field.value
+        return result
 
 
 class FusionAgentTransformations(TransformationBase):
@@ -175,8 +175,32 @@ class FusionAgentTransformations(TransformationBase):
         return cls._data_to_dict(renamed)
 
     @classmethod
+    def local_groups(cls, data: InputData) -> dict[str, Any]:
+        result = {}
+        for field in data:
+            if field.name == 'id':  # Bad model field
+                result['gid'] = field.value
+            elif field.name == 'member':
+                result.setdefault('members', []).append(field.value)
+            else:
+                result[field.name] = field.value
+        return result
+
+    @classmethod
     def local_users(cls, data: InputData) -> dict[str, Any]:
         return cls._data_to_dict(cls._rename_fields(data=data, mapping={'id': 'uid'}))
+
+    @classmethod
+    def networks(cls, data: InputData) -> dict[str, Any]:
+        result = cls._data_to_dict(data)
+        if (speed := result.get('speed')) is not None:
+            speed = int(speed)
+            if abs(speed) >= 1000:
+                speed_str = f'{speed // 1000} Gbps'
+            else:
+                speed_str = f'{speed} Mbps'
+            result['speed'] = speed_str
+        return result
 
 
 def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
