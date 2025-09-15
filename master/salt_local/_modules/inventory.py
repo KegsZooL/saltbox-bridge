@@ -77,8 +77,6 @@ class TransformationBase:
 
     In base class it is possible to transform data for any agent including selective
     operations due to TransformationBase.agent. Subclasses are selective to its' agents.
-
-    OCS Inventory Agent format is preffered for now.
     """
     _NON_CATEGORY_FIELDS: ClassVar = {'InputData', 'agent', 'process'}
 
