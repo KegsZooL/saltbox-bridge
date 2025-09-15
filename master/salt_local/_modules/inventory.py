@@ -59,7 +59,7 @@ CATEGORIES = (
     'softwares',
     'sounds',
     'storages',
-    'users',
+    'usbdevices',
     'videos',
     'virtualmachines',
 )
@@ -140,6 +140,17 @@ class OcsTransformations(TransformationBase):
             else:
                 result[field.name] = field.value
         return result
+
+    @classmethod
+    def storages(cls, data: InputData) -> dict[str, Any]:
+        result = cls._data_to_dict(data)
+        if (disksize := result.get('disksize')) is not None:
+            result['disksize'] = int(disksize)
+        return result
+
+    @classmethod
+    def usbdevices(cls, data: InputData) -> dict[str, Any]:
+        return cls._data_to_dict(cls._rename_fields(data=data, mapping={'description': 'caption'}))
 
 
 class FusionAgentTransformations(TransformationBase):
