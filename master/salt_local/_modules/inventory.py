@@ -202,6 +202,7 @@ class FusionAgentTransformations(TransformationBase):
     @classmethod
     def networks(cls, data: InputData) -> dict[str, Any]:
         result = cls._data_to_dict(data)
+
         if (speed := result.get('speed')) is not None:
             speed = int(speed)
             if abs(speed) >= 1000:
@@ -209,6 +210,12 @@ class FusionAgentTransformations(TransformationBase):
             else:
                 speed_str = f'{speed} Mbps'
             result['speed'] = speed_str
+
+        if not result.get('ipaddress') and (ipaddress6 := result.pop('ipaddress6', None)) is not None:
+            result['ipaddress'] = ipaddress6
+            result['ipmask'] = result.pop('ipmask6', '')
+            result['ipsubnet'] = result.pop('ipsubnet6', '')
+
         return result
 
 
