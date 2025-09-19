@@ -154,7 +154,7 @@ class OcsTransformations(TransformationBase):
         result = cls._data_to_dict(data)
         disksize = result.get('disksize')
         if disksize is not None:
-            result['disksize'] = int(disksize)
+            result['disksize'] = int(float(disksize))
         return result
 
     @classmethod
