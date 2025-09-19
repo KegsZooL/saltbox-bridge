@@ -12,16 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Requires python>=3.7 :'=
+
 
 from __future__ import annotations
 
 import logging
 import shutil
 import subprocess
-from collections.abc import Generator, Iterable
+import sys
+from collections.abc import Generator
+
+if sys.version_info >= (3, 9):  # noqa: UP036
+    from collections.abc import Iterable
+else:
+    from typing import Iterable  # noqa: UP035
+
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, ClassVar, TypeAlias
+from typing import Any, ClassVar
 from xml.etree import ElementTree
 
 from salt.exceptions import (  # type: ignore[import-untyped]
@@ -88,7 +97,7 @@ class TransformationBase:
                 msg = f'{cls.__name__}.{member} name does not match any category'
                 raise SaltException(msg)
 
-    InputData: TypeAlias = Iterable[Field]
+    InputData = Iterable[Field]
     # To use in base class for "if-based polymorphism"
     agent: InventoryAgentEnum
 
@@ -104,7 +113,8 @@ class TransformationBase:
     @staticmethod
     def _rename_fields(data: InputData, mapping: dict[str, str]) -> Generator[Field]:
         for field in data:
-            if (new_name := mapping.get(field.name)) is not None:
+            new_name = mapping.get(field.name)
+            if new_name is not None:
                 field.name = new_name
             yield field
 
@@ -119,7 +129,7 @@ class TransformationBase:
 
 
 class OcsTransformations(TransformationBase):
-    InputData: TypeAlias = TransformationBase.InputData
+    InputData = TransformationBase.InputData
     agent = InventoryAgentEnum.OCS
 
     @classmethod
@@ -142,7 +152,8 @@ class OcsTransformations(TransformationBase):
     @classmethod
     def storages(cls, data: InputData) -> dict[str, Any]:
         result = cls._data_to_dict(data)
-        if (disksize := result.get('disksize')) is not None:
+        disksize = result.get('disksize')
+        if disksize is not None:
             result['disksize'] = int(disksize)
         return result
 
@@ -153,7 +164,7 @@ class OcsTransformations(TransformationBase):
 
 class FusionAgentTransformations(TransformationBase):
     agent = InventoryAgentEnum.FI
-    InputData: TypeAlias = TransformationBase.InputData
+    InputData = TransformationBase.InputData
 
     @classmethod
     def controllers(cls, data: InputData) -> dict[str, Any]:
@@ -203,7 +214,8 @@ class FusionAgentTransformations(TransformationBase):
     def networks(cls, data: InputData) -> dict[str, Any]:
         result = cls._data_to_dict(data)
 
-        if (speed := result.get('speed')) is not None:
+        speed = result.get('speed')
+        if speed is not None:
             speed = int(speed)
             if abs(speed) >= 1000:
                 speed_str = f'{speed // 1000} Gbps'
@@ -211,7 +223,8 @@ class FusionAgentTransformations(TransformationBase):
                 speed_str = f'{speed} Mbps'
             result['speed'] = speed_str
 
-        if not result.get('ipaddress') and (ipaddress6 := result.pop('ipaddress6', None)) is not None:
+        ipaddress6 = result.pop('ipaddress6', None)
+        if not result.get('ipaddress') and ipaddress6 is not None:
             result['ipaddress'] = ipaddress6
             result['ipmask'] = result.pop('ipmask6', '')
             result['ipsubnet'] = result.pop('ipsubnet6', '')
