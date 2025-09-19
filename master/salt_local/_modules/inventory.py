@@ -28,7 +28,6 @@ if sys.version_info >= (3, 9):  # noqa: UP036
 else:
     from typing import Iterable  # noqa: UP035
 
-from dataclasses import dataclass
 from enum import Enum
 from typing import Any, ClassVar
 from xml.etree import ElementTree
@@ -74,10 +73,11 @@ CATEGORIES = (
 )
 
 
-@dataclass
-class Field:
-    name: str
-    value: Any
+# Plain class because @dataclass may throw error on some Python versions because of Salt loader
+class Field:  # noqa: B903
+    def __init__(self, name: str, value: Any) -> None:
+        self.name = name
+        self.value = value
 
 
 class TransformationBase:
@@ -268,16 +268,19 @@ def _inventory_to_dict(data: str, categories: Iterable[str] = CATEGORIES) -> dic
     return parsed
 
 
-@dataclass
 class InventoryAgent:
-    name: InventoryAgentEnum
-    bin: str
-    inventory_args: list[str]
-    transformations: type[TransformationBase]
-
-    @property
-    def inventory_cmd(self) -> list[str]:
-        return [self.bin, *self.inventory_args]
+    def __init__(
+        self,
+        name: InventoryAgentEnum,
+        bin: str,
+        inventory_args: list[str],
+        transformations: type[TransformationBase],
+    ) -> None:
+        self.name = name
+        self.bin = bin
+        self.inventory_args = inventory_args
+        self.transformations = transformations
+        self.inventory_cmd = self.bin, *self.inventory_args
 
 
 KNOWN_AGENTS = (
