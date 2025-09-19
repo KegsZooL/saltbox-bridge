@@ -88,6 +88,10 @@ class JobReturnMessageHandler(BaseMessageHandler):
         await self.send_message(message=message, message_tag=self.INVENTORY_SAVED_MSG_TAG)
 
     async def _notify_on_inventory_state(self, jid: str, mid: str, data: dict[str, Any]) -> None:
+        if data['retcode'] != 0:
+            logger.warning('"state.apply inventory" get failed for JID=%s, minion=%s', jid, mid)
+            return
+
         for mod, mod_data in data['return'].items():  # noqa: B007
             if mod_data['name'] == 'inventory.get':
                 if mod_data['result'] is not True:
