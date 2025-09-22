@@ -10,6 +10,7 @@ from saltbox_bridge_messages import BridgeInventoryDataSavedMessage, BridgeMinio
 from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.exceptions import StopProcessing
 from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler
+from saltbox_bridge.utils.jid import jid_to_epoch
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
                 pipe = pipe.expire(name=hash_name, time=SETTINGS.expire)
             await pipe.execute()
 
+        await self._update_job_returning(jid=jid, mid=mid, data=data)
         await self.redis_client.publish(channel=hash_name, message=data_json)
 
         if function == 'grains.items':
@@ -74,6 +76,21 @@ class JobReturnMessageHandler(BaseMessageHandler):
             logger.debug('Got inventory state return for %s', mid)
             await self._notify_on_inventory_state(jid=jid, mid=mid, data=data)
 
+    async def _update_job_returning(self, jid: str, mid: str, data: dict) -> None:
+        logger.debug('Updating job for %s', mid)
+        scored_jid = jid_to_epoch(jid)
+
+        try:
+            jobs_raw_data = await self.redis_client.zrange(name='jobs', start=scored_jid, end=scored_jid, byscore=True)  # type: ignore[call-overload]
+            job_data: dict[str, Any] = json.loads(jobs_raw_data[0])
+            job_data.setdefault('returning', {})[mid] = data.get('success', None)
+        except Exception as e:
+            logger.debug('Failed to get job return for %s%: %s', jid, e)
+            return
+
+        await self.redis_client.zremrangebyscore(name='jobs', min=scored_jid, max=scored_jid)
+        await self.redis_client.zadd(name='jobs', mapping={json.dumps(job_data): scored_jid})
+
     async def _notify_on_inventory_fun(self, jid: str, mid: str, data: dict[str, Any]) -> None:
         if data['retcode'] != 0:
             logger.warning('inventory.get failed for JID=%s, minion=%s', jid, mid)
@@ -82,7 +99,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
         message = BridgeInventoryDataSavedMessage(
             master=self.master_id,
             jid=jid,
-            minions=[mid,],
+            minions=[mid],
             path=['return'],
         )
         await self.send_message(message=message, message_tag=self.INVENTORY_SAVED_MSG_TAG)
@@ -105,7 +122,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
         message = BridgeInventoryDataSavedMessage(
             master=self.master_id,
             jid=jid,
-            minions=[mid,],
+            minions=[mid],
             path=['return', mod, 'changes', 'ret'],
         )
         await self.send_message(message=message, message_tag=self.INVENTORY_SAVED_MSG_TAG)

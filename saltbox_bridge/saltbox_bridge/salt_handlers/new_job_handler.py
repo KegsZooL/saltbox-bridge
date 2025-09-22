@@ -22,10 +22,23 @@ class JobNewMessageHandler(BaseMessageHandler):
     # Mention: on salt-call call there is no salt/job/*/new event
     # (but salt/job/*/ret/* it is)
 
-    def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
+    async def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
         # US292: Job* models exept `tgt: str`
         if isinstance(tgt := data.get('tgt'), list):
             data['tgt'] = ','.join(tgt)
+
+        job_create_data: dict[bytes, bytes] = await self.redis_client.hgetall(f'job_create:{data["jid"]}')
+        raw_user_data = job_create_data.get(b'user', None)
+
+        if raw_user_data:
+            user_data = json.loads(raw_user_data.decode('utf-8'))
+        else:
+            user_data = {'sub': 'system', 'email_verified': True, 'name': 'System', 'email': 'system@localhost'}
+
+        data['returning'] = {}
+        data['system_user'] = data.get('user', None)
+        data['user'] = user_data
+
         return data
 
     async def process(self, match: re.Match, data: MessageDataType) -> None:
@@ -53,9 +66,9 @@ class JobNewForTaskMessageHandler(JobNewMessageHandler):
 
     tag_pattern = re.compile(r'^salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new$')
 
-    def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
+    async def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
         data['jid'] = match.group('jid')
-        return super().normalize_data(match=match, tag=tag, data=data)
+        return await super().normalize_data(match=match, tag=tag, data=data)
 
     async def process(self, match: re.Match, data: MessageDataType) -> None:
         jid = match.group('jid')
