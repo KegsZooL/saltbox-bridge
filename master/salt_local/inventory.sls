@@ -27,7 +27,7 @@ Dependencies intalled:
 {% if 'ALT' in grains.lsb_distrib_id %}
 {# FIXME: Write pkg module for ALT 乁[ ° ᴥ ° ]ㄏ  #}
   cmd.run:
-    - name:
+    - names:
       - apt-get update
       - apt-get install -y {{ agent }}
 {% else %}
