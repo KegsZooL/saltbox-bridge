@@ -35,7 +35,7 @@ Dependencies intalled:
     - name: {{ agent }}
     - refresh: True
 {% endif %}
-    - unless: which {{ agent }}
+    - unless: command -v {{ agent }}
 
 Inventory:
   module.run:
