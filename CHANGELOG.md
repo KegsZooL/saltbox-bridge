@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Faststream messages and Salt `job/*/new` events performance test generators.
+- `inventory` SaltStack module and state.
 
 ### Changed
 
