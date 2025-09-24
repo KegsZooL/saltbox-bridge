@@ -72,6 +72,8 @@ CATEGORIES = (
     'virtualmachines',
 )
 
+CATEGORY_LIST_SEPARATOR = ','
+
 
 # Plain class because @dataclass may throw error on some Python versions because of Salt loader
 class Field:  # noqa: B903
@@ -312,7 +314,7 @@ def _lookup_inventory_agent() -> InventoryAgent:
 INVENTORY_AGENT = _lookup_inventory_agent()
 
 
-def get(only: list[str] | None = None, exclude: list[str] | None = None) -> dict[str, Any]:
+def get(only='', exclude='') -> dict[str, Any]:
     """
     Get inventory data
 
@@ -327,15 +329,17 @@ def get(only: list[str] | None = None, exclude: list[str] | None = None) -> dict
 
     .. code-block:: bash
 
-        salt '*' inventory.get exclude=['softwares','bios']
+        salt '*' inventory.get exclude='softwares,bios'
     """
     if only:
-        categories = set(_validate_categories(only))
+        only_set = set(_validate_categories(only.split(CATEGORY_LIST_SEPARATOR)))
+        categories = only_set
     else:
         categories = set(CATEGORIES)
 
     if exclude:
-        categories -= set(_validate_categories(exclude))
+        exclude_set = set(_validate_categories(exclude.split(CATEGORY_LIST_SEPARATOR)))
+        categories -= exclude_set
 
     try:
         result = subprocess.run(INVENTORY_AGENT.inventory_cmd, capture_output=True, check=True)
