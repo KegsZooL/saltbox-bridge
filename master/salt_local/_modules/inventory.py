@@ -132,22 +132,21 @@ class TransformationBase:
 
 
 class OcsTransformations(TransformationBase):
-    InputData = TransformationBase.InputData
     agent = InventoryAgentEnum.OCS
 
     @classmethod
-    def local_users(cls, data: InputData) -> dict[str, Any]:
+    def local_users(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         # FI has `gid` also, but OCS do not. `local_groups.name` may be matched with `local_user.login`
         return cls._data_to_dict(cls._rename_fields(data=data, mapping={'id_user': 'uid'}))
 
     @classmethod
-    def local_groups(cls, data: InputData) -> dict[str, Any]:
+    def local_groups(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         result = {}
         for field in data:
             if field.name == 'id_group':
                 result['gid'] = field.value
             elif field.name == 'member':
-                members=str(field.value).split(',')
+                members = str(field.value).split(',')
                 members.sort()
                 result['members'] = LOCAL_GROUPS_MEMBERS_SEPARATOR.join(members)
             else:
@@ -155,7 +154,7 @@ class OcsTransformations(TransformationBase):
         return result
 
     @classmethod
-    def storages(cls, data: InputData) -> dict[str, Any]:
+    def storages(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         result = cls._data_to_dict(data)
         disksize = result.get('disksize')
         if disksize is not None:
@@ -163,16 +162,15 @@ class OcsTransformations(TransformationBase):
         return result
 
     @classmethod
-    def usbdevices(cls, data: InputData) -> dict[str, Any]:
+    def usbdevices(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         return cls._data_to_dict(cls._rename_fields(data=data, mapping={'description': 'caption'}))
 
 
 class FusionAgentTransformations(TransformationBase):
     agent = InventoryAgentEnum.FI
-    InputData = TransformationBase.InputData
 
     @classmethod
-    def controllers(cls, data: InputData) -> dict[str, Any]:
+    def controllers(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         map = cls._data_to_dict(data)
 
         manufacturer = map.get('manufacturer')
@@ -186,7 +184,7 @@ class FusionAgentTransformations(TransformationBase):
         return map
 
     @classmethod
-    def cpus(cls, data: InputData) -> dict[str, Any]:
+    def cpus(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         renamed = cls._rename_fields(
             data=data,
             mapping={
@@ -200,7 +198,7 @@ class FusionAgentTransformations(TransformationBase):
         return cls._data_to_dict(renamed)
 
     @classmethod
-    def local_groups(cls, data: InputData) -> dict[str, Any]:
+    def local_groups(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         result = {}
         members = []
         for field in data:
@@ -215,11 +213,11 @@ class FusionAgentTransformations(TransformationBase):
         return result
 
     @classmethod
-    def local_users(cls, data: InputData) -> dict[str, Any]:
+    def local_users(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         return cls._data_to_dict(cls._rename_fields(data=data, mapping={'id': 'uid'}))
 
     @classmethod
-    def networks(cls, data: InputData) -> dict[str, Any]:
+    def networks(cls, data: TransformationBase.InputData) -> dict[str, Any]:
         result = cls._data_to_dict(data)
 
         speed = result.get('speed')
