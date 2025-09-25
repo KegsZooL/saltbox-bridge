@@ -18,7 +18,6 @@ from saltbox_bridge.config import HIERARHY
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.exceptions import CoreConnectionTimeoutError
-from saltbox_bridge.utils.gpg import SaltBoxCrypt
 from saltbox_bridge.utils.system import utc_now
 
 logger = logging.getLogger(__name__)
@@ -27,9 +26,8 @@ logger = logging.getLogger(__name__)
 class CoreConnector:
     CONNECT_RETRY_INTERVAL_SEC = 10
 
-    def __init__(self, master_id: str, saltbox_crypt: SaltBoxCrypt):
+    def __init__(self, master_id: str):
         self.master_id = master_id
-        self.saltbox_crypt = saltbox_crypt
         self.master_status = MasterStatus.NEW
         self.is_connected = False
         self.dt_last_check: datetime | None = None
@@ -78,7 +76,6 @@ class CoreConnector:
         salt_conf_pubkey = HIERARHY.salt_conf_pubkey.open().read().strip()
         return BridgeAuthRequest(
             master=self.master_id,
-            crypt_pubkey=self.saltbox_crypt.pubkey,
             salt_conf_pubkey=SshPubKeyModel.from_str(salt_conf_pubkey),
             sshfs_pubkey=SshPubKeyModel.from_str(sshfs_pubkey),
         )
@@ -94,7 +91,6 @@ class CoreConnector:
             logger.error('Salt.Box Core did not respose on auth at a given time')
             return False
         master_auth = CoreAuthResponse(**ret)
-        self.saltbox_crypt.save_pubkey_core(key_data=master_auth.crypt_pubkey)
         self.master_status = master_auth.status
         logger.info('Current Salt.Box status of master is %s', self.master_status)
 

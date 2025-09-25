@@ -28,7 +28,6 @@ from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
 from saltbox_bridge.event_bus.subscribers import router
 from saltbox_bridge.redis import get_redis_client
-from saltbox_bridge.utils.gpg import SaltBoxCrypt
 from saltbox_bridge.utils.salt_caller import SaltCaller
 from saltbox_bridge.utils.salt_connector import SaltConnector
 
@@ -43,8 +42,7 @@ async def _async_start(salt_opts: dict | None) -> None:
     configure_logging(format=f'{salt_opts["log_fmt_console"]} (Bridge Agent)')
 
     salt_master = salt_opts['salt_box_master_id']
-    saltbox_crypt = SaltBoxCrypt(master_id=salt_master, can_gen_new_key=True)
-    core_connector = CoreConnector(master_id=salt_master, saltbox_crypt=saltbox_crypt)
+    core_connector = CoreConnector(master_id=salt_master)
     salt_caller = SaltCaller(core_connector)
 
     await core_connector.wait_success_connection()
@@ -60,7 +58,6 @@ async def _async_start(salt_opts: dict | None) -> None:
         context.set_global('salt_connector', salt_connector)
         context.set_global('salt_master', salt_master)
         context.set_global('salt_opts', salt_opts)
-        context.set_global('saltbox_crypt', saltbox_crypt)
         context.set_global('core_connector', core_connector)
         context.set_global('salt_caller', salt_caller)
 

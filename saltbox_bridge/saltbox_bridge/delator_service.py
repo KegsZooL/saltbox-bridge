@@ -30,7 +30,6 @@ from saltbox_bridge.salt_handlers.minion_started_handler import MinionStartedMes
 from saltbox_bridge.salt_handlers.new_job_handler import JobNewForTaskMessageHandler, JobNewMessageHandler
 from saltbox_bridge.salt_handlers.presence_handler import PresenceMessageHandler
 from saltbox_bridge.salt_metrics.service.metric_service import start_prometheus_client
-from saltbox_bridge.utils.gpg import SaltBoxCrypt
 
 LOGGER = logging.getLogger(__name__)
 metric_registry = CollectorRegistry()
@@ -75,10 +74,8 @@ class SaltBridge:
 
     async def start(self) -> None:
         master_id: str = self.salt_opts['salt_box_master_id']
-        saltbox_crypt = SaltBoxCrypt(master_id=master_id, can_gen_new_key=False)
-        core_connector = CoreConnector(master_id=master_id, saltbox_crypt=saltbox_crypt)
+        core_connector = CoreConnector(master_id=master_id)
 
-        context.set_global('saltbox_crypt', saltbox_crypt)
         context.set_global('core_connector', core_connector)
         context.set_global('master_id', master_id)
 
@@ -104,7 +101,6 @@ class SaltBridge:
             for handler in self.handlers:
                 await handler.handle(tag, data)
         except StopProcessing:
-
             LOGGER.debug('End message processing')
             return
 
