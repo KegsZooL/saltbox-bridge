@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import datetime
 from typing import Any
 
 from salt.utils import json  # type: ignore
-from saltbox_bridge_messages import BridgeInventoryDataSavedMessage, BridgeMinionGrainsMessage
+from saltbox_bridge_messages import (
+    BridgeInventoryDataSavedMessage,
+    BridgeMinionGrainsMessage,
+    BridgeMinionPresenceMessage,
+)
 
 from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.exceptions import StopProcessing
@@ -76,6 +81,8 @@ class JobReturnMessageHandler(BaseMessageHandler):
             logger.debug('Got inventory state return for %s', mid)
             await self._notify_on_inventory_state(jid=jid, mid=mid, data=data)
 
+        await self._send_presence(mid=mid, data=data)
+
     async def _update_job_returning(self, jid: str, mid: str, data: dict) -> None:
         logger.debug('Updating job for %s', mid)
         scored_jid = jid_to_epoch(jid)
@@ -134,6 +141,15 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         message = BridgeMinionGrainsMessage(master=self.master_id, grains=grains)
         await self.send_message(message=message, message_tag='grains')
+
+    async def _send_presence(self, mid: str, data: dict[str, Any]) -> None:
+        message = BridgeMinionPresenceMessage(
+            minions=[mid],
+            master=self.salt_opts['salt_box_master_id'],
+            stamp=datetime.fromisoformat(data['_stamp']).timestamp(),
+        )
+
+        await self.send_message(message=message, message_tag='presence')
 
 
 class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
