@@ -127,7 +127,7 @@ class TransformationBase:
         if cls.agent is InventoryAgentEnum.FI:
             map.setdefault('numslots', 0)
         elif cls.agent is InventoryAgentEnum.OCS:
-            map['numslots'] = map.get('numslots', 1) - 1
+            map['numslots'] = int(map.get('numslots', 1)) - 1
         return map
 
 
