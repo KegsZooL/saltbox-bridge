@@ -73,6 +73,7 @@ CATEGORIES = (
 )
 
 CATEGORY_LIST_SEPARATOR = ','
+LOCAL_GROUPS_MEMBERS_SEPARATOR = ','
 
 
 # Plain class because @dataclass may throw error on some Python versions because of Salt loader
@@ -146,7 +147,9 @@ class OcsTransformations(TransformationBase):
             if field.name == 'id_group':
                 result['gid'] = field.value
             elif field.name == 'member':
-                result['members'] = str(field.value).split(',')
+                members=str(field.value).split(',')
+                members.sort()
+                result['members'] = LOCAL_GROUPS_MEMBERS_SEPARATOR.join(members)
             else:
                 result[field.name] = field.value
         return result
@@ -199,13 +202,16 @@ class FusionAgentTransformations(TransformationBase):
     @classmethod
     def local_groups(cls, data: InputData) -> dict[str, Any]:
         result = {}
+        members = []
         for field in data:
             if field.name == 'id':  # Bad model field
                 result['gid'] = field.value
             elif field.name == 'member':
-                result.setdefault('members', []).append(field.value)
+                members.append(field.value)
             else:
                 result[field.name] = field.value
+        members.sort()
+        result['members'] = LOCAL_GROUPS_MEMBERS_SEPARATOR.join(members)
         return result
 
     @classmethod
