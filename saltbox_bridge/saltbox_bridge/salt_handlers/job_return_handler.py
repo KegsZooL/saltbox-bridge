@@ -90,7 +90,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
         try:
             jobs_raw_data = await self.redis_client.zrange(name='jobs', start=scored_jid, end=scored_jid, byscore=True)  # type: ignore[call-overload]
             job_data: dict[str, Any] = json.loads(jobs_raw_data[0])
-            job_data.setdefault('returning', {})[mid] = data.get('success', None)
+            job_data.setdefault('returning', {})[mid] = data['retcode'] == 0
         except Exception as e:
             logger.debug('Failed to get job return for %s%: %s', jid, e)
             return
