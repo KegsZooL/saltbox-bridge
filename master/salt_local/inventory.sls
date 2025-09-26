@@ -24,7 +24,15 @@ OS family is set:
 Dependencies intalled:
   saltutil.sync_modules:
     - refresh: True
-{% if 'ALT' in grains.lsb_distrib_id %}
+{% if grains.kernel.lower() == 'windows' %}
+  test.configurable_test_state:
+    - result: false
+    - changes: false
+    - warnings:
+      - Installing inventory agent is not supported on Microsoft™ Windows™ based minions for the moment.
+      - Please decide to deploy supported one (FusionInventory agent is recommended).
+    - failhard: true
+{% elif 'ALT' in grains.get('lsb_distrib_id', '') %}
 {# FIXME: Write pkg module for ALT 乁[ ° ᴥ ° ]ㄏ  #}
   cmd.run:
     - names:
