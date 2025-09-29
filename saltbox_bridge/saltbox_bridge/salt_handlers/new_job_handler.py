@@ -35,6 +35,7 @@ class JobNewMessageHandler(BaseMessageHandler):
         else:
             user_data = {'sub': 'system', 'email_verified': True, 'name': 'System', 'email': 'system@localhost'}
 
+        data['salt_master'] = self.master_id
         data['returning'] = {}
         data['system_user'] = data.get('user', None)
         data['user'] = user_data
