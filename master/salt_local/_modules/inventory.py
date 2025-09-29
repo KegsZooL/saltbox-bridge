@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Generator
+from functools import lru_cache
 
 if sys.version_info >= (3, 9):  # noqa: UP036
     from collections.abc import Iterable
@@ -40,6 +41,9 @@ from salt.exceptions import (  # type: ignore[import-untyped]
 )
 
 logger = logging.getLogger(__name__)
+
+__grains__: dict[str, Any]
+__salt__: dict[str, Any]
 
 
 class InventoryAgentEnum(Enum):
@@ -248,7 +252,8 @@ def _validate_categories(categories: Iterable[str]) -> Iterable[str]:
 
 def _element_to_dict(elem: ElementTree.Element, category: str) -> dict[str, Any]:
     data = [Field(name=child.tag.lower(), value=child.text or '') for child in elem]
-    return INVENTORY_AGENT.transformations.process(category=category, data=data)
+    ia = _lookup_inventory_agent()
+    return ia.transformations.process(category=category, data=data)
 
 
 def _inventory_to_dict(data: str, categories: Iterable[str] = CATEGORIES) -> dict[str, Any]:
@@ -289,33 +294,59 @@ class InventoryAgent:
         self.inventory_cmd = self.bin, *self.inventory_args
 
 
-KNOWN_AGENTS = (
-    InventoryAgent(
-        name=InventoryAgentEnum.FI,
-        bin='fusioninventory-agent',
-        inventory_args=['--scan-homedirs', '--local', '-'],
-        transformations=FusionAgentTransformations
-    ),
-    InventoryAgent(
-        name=InventoryAgentEnum.OCS,
-        bin='ocsinventory-agent',
-        inventory_args=['--scan-homedirs', '--stdout'],
-        transformations=OcsTransformations,
-    ),
-)
+def _get_known_agents() -> list[InventoryAgent]:
+    kernel = __grains__['kernel'].lower()
+
+    if kernel == 'windows':
+        prog_files = __salt__['cmd.shell']('echo %ProgramFiles%')
+        fi_bin = rf'{prog_files}\FusionInventory-Agent\fusioninventory-agent.bat'
+    else:
+        fi_bin = 'fusioninventory-agent'
+
+    agents = [
+        InventoryAgent(
+            name=InventoryAgentEnum.FI,
+            bin=fi_bin,
+            inventory_args=['--scan-homedirs', '--local', '-'],
+            transformations=FusionAgentTransformations
+        ),
+    ]
+    if kernel != 'windows':
+        agents.append(
+            InventoryAgent(
+                name=InventoryAgentEnum.OCS,
+                bin='ocsinventory-agent',
+                inventory_args=['--scan-homedirs', '--stdout'],
+                transformations=OcsTransformations,
+            ),
+        )
+    return agents
 
 
+@lru_cache(maxsize=None)  # noqa: UP033
 def _lookup_inventory_agent() -> InventoryAgent:
-    for agent in KNOWN_AGENTS:
+    known_agents = _get_known_agents()
+    for agent in known_agents:
         if shutil.which(agent.bin) is not None:
+            logger.info('Using %s', agent.bin)
             return agent
     else:
-        agents = tuple(agent.bin for agent in KNOWN_AGENTS)
-        msg = f'Not found compatible inventory agent {agents}'
+        agents = tuple(agent.bin for agent in known_agents)
+        msg = f'Not found any compatible inventory agent executable {agents}'
         raise CommandNotFoundError(msg)
 
 
-INVENTORY_AGENT = _lookup_inventory_agent()
+def agent_bin() -> str:
+    """
+    Which agent executable file will be used to collect the data by inventory.get
+
+    CLI Example:
+
+    .. code-block:: bash
+
+        salt '*' inventory.agent_bin
+    """
+    return _lookup_inventory_agent().bin
 
 
 def get(only='', exclude='') -> dict[str, Any]:
@@ -345,10 +376,11 @@ def get(only='', exclude='') -> dict[str, Any]:
         exclude_set = set(_validate_categories(exclude.split(CATEGORY_LIST_SEPARATOR)))
         categories -= exclude_set
 
+    agent = _lookup_inventory_agent()
     try:
-        result = subprocess.run(INVENTORY_AGENT.inventory_cmd, capture_output=True, check=True)
+        result = subprocess.run(agent.inventory_cmd, capture_output=True, check=True)
     except subprocess.CalledProcessError as err:
-        cmd_str = ' '.join(INVENTORY_AGENT.inventory_cmd)
+        cmd_str = ' '.join(agent.inventory_cmd)
         logger.error('Command failed: "%s", stderr follows', cmd_str)
         for line in err.stderr.decode().splitlines():
             logger.error(line)
@@ -367,4 +399,14 @@ def available_categories() -> Iterable[str]:
 
 if __name__ == '__main__':
     import json
+
+    try:
+        _ = __grains__
+    except NameError:
+        # Stub context
+        __grains__ = {
+            'kernel': 'Linux'
+        }
+        __salt__ = {}
+
     print(json.dumps(get(), indent=4))
