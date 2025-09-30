@@ -52,7 +52,7 @@ Dependencies intalled:
 {% endif %}
 
 Inventory:
-  module.run:
-    - inventory.get:
-      - only: ''
-      - exclude: ''
+  module.run:  # MUST be in the single form to get return processed on Bridge
+    - name: inventory.get
+    - only: ''  # TODO parametrize with a pillar
+    - exclude: ''
