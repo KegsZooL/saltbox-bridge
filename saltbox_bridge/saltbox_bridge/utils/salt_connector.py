@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any, cast
 
 from redis.asyncio import Redis
+from salt.channel.client import ReqChannel  # type: ignore
 from salt.client import LocalClient  # type: ignore
 from salt.exceptions import SaltException  # type: ignore
+from salt.utils.args import condition_input  # type: ignore
 from saltbox_bridge_messages import SaltTgtType
 
 from saltbox_bridge.exceptions import CreateJobError
@@ -18,6 +21,31 @@ class SaltConnector:
     def __init__(self, salt_opts: dict, redis_client: Redis) -> None:
         self.salt_opts = salt_opts
         self.redis_client = redis_client
+
+        with Path(self.salt_opts['cachedir']).joinpath('.root_key').open('r') as key_f:
+            self.key = key_f.read()
+
+        self.channel = ReqChannel.factory(self.salt_opts, crypt='clear', master_uri='tcp://localhost:4506')
+
+    def create_job_by_zeromq(
+        self, jid: str, tgt: str, tgt_type: SaltTgtType, fun: str, fun_args: list, fun_kwargs: dict
+    ) -> str:
+        load: dict[str, str | list | dict] = {
+            'cmd': 'publish',
+            'user': 'root',
+            'key': self.key,
+            'fun': fun,
+            'tgt': tgt,
+            'tgt_type': tgt_type,
+            'arg': condition_input(fun_args, fun_kwargs),
+            'ret': '',
+            'jid': jid,
+            'load': {},
+        }
+
+        ret = self.channel.send(load, timeout=60).get('load', {})
+
+        return ret.get('jid', '')
 
     @property
     def salt_client(self) -> LocalClient:
@@ -40,14 +68,15 @@ class SaltConnector:
             status: str | None = job_data[b'status'].decode() if b'status' in job_data else None
         except KeyError as exc:
             LOGGER.warning(job_data)
+            await self.redis_client.hdel(hash_name)
             raise exc
 
         if status == 'processed':
             return jid
 
         try:
-            back_jid: str = self.salt_client.cmd_async(
-                tgt=tgt, tgt_type=tgt_type, fun=fun, arg=arg, kwarg=kwarg, jid=jid
+            back_jid: str = self.create_job_by_zeromq(
+                tgt=tgt, tgt_type=tgt_type, fun=fun, fun_args=arg, fun_kwargs=kwarg, jid=jid
             )
         except SaltException as err:
             LOGGER.exception(str(err))
