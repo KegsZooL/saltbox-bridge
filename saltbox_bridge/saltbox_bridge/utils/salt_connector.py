@@ -28,15 +28,19 @@ class SaltConnector:
     async def create_job_from_redis(self, hash_name: str) -> str:
         job_data: dict[bytes, bytes] = await self.redis_client.hgetall(hash_name)
 
-        jid: str = job_data[b'jid'].decode() if b'jid' in job_data else ''
-        tgt: str = job_data[b'tgt'].decode()
-        tgt_type: SaltTgtType = cast(
-            SaltTgtType, job_data[b'tgt_type'].decode()
-        )  # FIXME (a.karmanov): Do not cast  # noqa: TD001 E501
-        fun: str = job_data[b'fun'].decode()
-        arg: list = json.loads(job_data[b'arg']) if b'arg' in job_data else []
-        kwarg: dict = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else {}
-        status: str | None = job_data[b'status'].decode() if b'status' in job_data else None
+        try:
+            jid: str = job_data[b'jid'].decode() if b'jid' in job_data else ''
+            tgt: str = job_data[b'tgt'].decode()
+            tgt_type: SaltTgtType = cast(
+                SaltTgtType, job_data[b'tgt_type'].decode()
+            )  # FIXME (a.karmanov): Do not cast  # noqa: TD001
+            fun: str = job_data[b'fun'].decode()
+            arg: list = json.loads(job_data[b'arg']) if b'arg' in job_data else []
+            kwarg: dict = json.loads(job_data[b'kwarg']) if b'kwarg' in job_data else {}
+            status: str | None = job_data[b'status'].decode() if b'status' in job_data else None
+        except KeyError as exc:
+            LOGGER.warning(job_data)
+            raise exc
 
         if status == 'processed':
             return jid
