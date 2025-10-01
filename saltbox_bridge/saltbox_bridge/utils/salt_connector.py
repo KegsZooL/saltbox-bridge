@@ -68,7 +68,7 @@ class SaltConnector:
             status: str | None = job_data[b'status'].decode() if b'status' in job_data else None
         except KeyError as exc:
             LOGGER.warning(job_data)
-            await self.redis_client.hdel(hash_name)
+            await self.redis_client.delete(hash_name)
             raise exc
 
         if status == 'processed':
