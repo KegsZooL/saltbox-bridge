@@ -69,7 +69,7 @@ class SaltConnector:
         except KeyError as exc:
             LOGGER.warning(job_data)
             await self.redis_client.delete(hash_name)
-            raise exc
+            raise CreateJobError(str(exc)) from exc
 
         if status == 'processed':
             return jid
