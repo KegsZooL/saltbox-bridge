@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import json
 import re
 from typing import Any, cast
 
@@ -8,6 +9,8 @@ import redis.asyncio as redis
 from faststream.redis import RedisBroker
 from salt.client import LocalClient  # type: ignore
 from saltbox_bridge_messages import BridgeMessageBase
+
+from saltbox_bridge.config import SETTINGS
 
 MessageDataType = dict[str, Any]
 
@@ -30,6 +33,8 @@ class BaseMessageHandler(abc.ABC):
         self.redis_client = redis_client
         self.broker = broker
         self.salt_opts = salt_opts
+
+    METRIC_TAG: str | None = None
 
     @property
     def salt_client(self) -> LocalClient:
@@ -63,9 +68,50 @@ class BaseMessageHandler(abc.ABC):
         """
         if match := self.tag_pattern.match(tag):
             data = await self.normalize_data(match=match, tag=tag, data=data)
+
+            if self.can_process_metrics():
+                await self.process_metrics(match=match, tag=tag, data=data)
+
             return await self.process(match, data)
 
         return None
+
+    def can_process_metrics(self) -> bool:
+        if SETTINGS.is_metric_enabled and self.METRIC_TAG:
+            return True
+
+        return False
+
+    async def _prepare_metrics_data(self, match: re.Match, tag: str, data: MessageDataType) -> dict:
+        """
+        Prepare metrics data
+
+        Args:
+            match: matched salt message tag
+            tag: salt message tag
+            data: salt message data
+        """
+
+        return {
+            'master_id': self.master_id,
+        }
+
+    async def process_metrics(self, match: re.Match, tag: str, data: MessageDataType) -> None:
+        """
+        Process metrics
+
+        Args:
+            match: matched salt message tag
+            tag: salt message tag
+            data: salt message data
+        """
+
+        if not self.METRIC_TAG:
+            return
+
+        await self.redis_client.publish(
+            channel=self.METRIC_TAG, message=json.dumps(await self._prepare_metrics_data(match, tag, data))
+        )
 
     @abc.abstractmethod
     async def process(self, match: re.Match, data: MessageDataType) -> None:

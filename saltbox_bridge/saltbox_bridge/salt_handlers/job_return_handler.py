@@ -14,7 +14,7 @@ from saltbox_bridge_messages import (
 
 from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.exceptions import StopProcessing
-from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler
+from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler, MessageDataType
 from saltbox_bridge.utils.jid import jid_to_epoch
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
     """
 
     tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
+    METRIC_TAG = 'metrics:job_return'
     INVENTORY_SAVED_MSG_TAG = 'inventory_saved'
     INVENTORY_STATE = 'inventory'
 
@@ -151,6 +152,18 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         await self.send_message(message=message, message_tag='presence')
 
+    async def _prepare_metrics_data(self, match: re.Match, tag: str, data: MessageDataType) -> dict:
+        metrics_data = await super()._prepare_metrics_data(match=match, tag=tag, data=data)
+        metrics_data.update(
+            {
+                'jid': match.group('jid'),
+                'minion_id': match.group('mid'),
+                'stamp': data['_stamp'],
+            }
+        )
+
+        return metrics_data
+
 
 class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
     """
@@ -158,6 +171,11 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
     """
 
     tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
+    METRIC_TASK_TAG = 'metrics:task:job_return'
+
+    _STATUS_SUCCESS = 'success'
+    _STATUS_PARTIAL_SUCCESS = 'partial_success'
+    _STATUS_FAILED = 'failed'
 
     async def _process_task(self, jid: str, tid: str, data_json: str | bytes) -> None:
         await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:return', message=data_json)
@@ -178,3 +196,29 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
         await self._process_task(jid=jid, tid=tid, data_json=data_json)
 
         raise StopProcessing()
+
+    async def _extract_job_status(self, data: MessageDataType) -> str:
+        if data.get(self._STATUS_SUCCESS, False):
+            return self._STATUS_SUCCESS
+        elif isinstance(data['return'], dict):
+            stage_results = []
+            for stage in data['return'].values():
+                stage_results.append(stage.get('result', False))
+            if all(r is False for r in stage_results):
+                return self._STATUS_FAILED
+            elif any(r is True for r in stage_results):
+                return self._STATUS_PARTIAL_SUCCESS
+        return self._STATUS_FAILED
+
+    async def _prepare_metrics_data(self, match: re.Match, tag: str, data: MessageDataType) -> dict:
+        metrics_data = await super()._prepare_metrics_data(match=match, tag=tag, data=data)
+        metrics_data.update({'tid': match.group('tid'), 'job_status': await self._extract_job_status(data)})
+
+        return metrics_data
+
+    async def process_metrics(self, match: re.Match, tag: str, data: MessageDataType) -> None:
+        await super().process_metrics(match=match, tag=tag, data=data)
+
+        await self.redis_client.publish(
+            channel=self.METRIC_TASK_TAG, message=json.dumps(await self._prepare_metrics_data(match, tag, data))
+        )

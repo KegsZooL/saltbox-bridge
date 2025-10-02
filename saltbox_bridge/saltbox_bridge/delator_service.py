@@ -6,10 +6,6 @@ from typing import TYPE_CHECKING, TypedDict
 
 import salt.config  # type: ignore[import-untyped]
 from faststream import context
-from prometheus_client import CollectorRegistry
-
-from saltbox_bridge.salt_metrics.service.metric_factory import MetricFactory
-from saltbox_bridge.salt_metrics.service.metric_router import MetricRouter
 
 if TYPE_CHECKING:
     from faststream.redis import RedisBroker
@@ -26,13 +22,12 @@ from saltbox_bridge.salt_handlers.job_return_handler import (
     JobReturnForTaskMessageHandler,
     JobReturnMessageHandler,
 )
+from saltbox_bridge.salt_handlers.metrics_handler import SaltMessageMetricMessageHandler
 from saltbox_bridge.salt_handlers.minion_started_handler import MinionStartedMessageHandler
 from saltbox_bridge.salt_handlers.new_job_handler import JobNewForTaskMessageHandler, JobNewMessageHandler
 from saltbox_bridge.salt_handlers.presence_handler import PresenceMessageHandler
-from saltbox_bridge.salt_metrics.service.metric_service import start_prometheus_client
 
 LOGGER = logging.getLogger(__name__)
-metric_registry = CollectorRegistry()
 
 
 class HandlersArgs(TypedDict):
@@ -59,11 +54,8 @@ class SaltBridge:
             'salt_opts': self.salt_opts,
         }
 
-        mf = MetricFactory(registry=metric_registry, redis_client=self.redis_client, salt_opts=self.salt_opts)
-        metrics = mf.create_all()
-        self.metric_router = MetricRouter(metrics=metrics)
-
         self.handlers = {
+            SaltMessageMetricMessageHandler(**handlers_args),
             JobNewMessageHandler(**handlers_args),
             JobNewForTaskMessageHandler(**handlers_args),
             JobReturnMessageHandler(**handlers_args),
@@ -79,7 +71,6 @@ class SaltBridge:
         context.set_global('core_connector', core_connector)
         context.set_global('master_id', master_id)
 
-        await start_prometheus_client(registry=metric_registry)
         await core_connector.wait_success_connection()
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
@@ -95,7 +86,6 @@ class SaltBridge:
         data = event['data']
 
         LOGGER.debug('%s got event with tag "%s"', __name__, tag)
-        await self.metric_router.route_and_aggregate(tag=tag, data=data)
 
         try:
             for handler in self.handlers:

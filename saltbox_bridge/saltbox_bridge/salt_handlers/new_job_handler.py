@@ -19,6 +19,7 @@ class JobNewMessageHandler(BaseMessageHandler):
     """
 
     tag_pattern = re.compile(r'^salt/job/(?P<jid>\d{20})/new$')
+    METRIC_TAG = 'metrics:new_job'
     # Mention: on salt-call call there is no salt/job/*/new event
     # (but salt/job/*/ret/* it is)
 
@@ -59,6 +60,19 @@ class JobNewMessageHandler(BaseMessageHandler):
         pipe = pipe.publish(channel=f'job:{jid}:new', message=data_json)
         return pipe
 
+    async def _prepare_metrics_data(self, match: re.Match, tag: str, data: MessageDataType) -> dict:
+        metrics_data = await super()._prepare_metrics_data(match=match, tag=tag, data=data)
+        metrics_data.update(
+            {
+                'jid': match.group('jid'),
+                'tgt': data['tgt'],
+                'fun': data['fun'],
+                'stamp': data['_stamp'],
+            }
+        )
+
+        return metrics_data
+
 
 class JobNewForTaskMessageHandler(JobNewMessageHandler):
     """
@@ -66,6 +80,7 @@ class JobNewForTaskMessageHandler(JobNewMessageHandler):
     """
 
     tag_pattern = re.compile(r'^salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new$')
+    METRIC_TASK_TAG = 'metrics:task:new_job'
 
     async def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
         data['jid'] = match.group('jid')
@@ -85,3 +100,16 @@ class JobNewForTaskMessageHandler(JobNewMessageHandler):
             await pipe.execute()
 
         raise StopProcessing()
+
+    async def _prepare_metrics_data(self, match: re.Match, tag: str, data: MessageDataType) -> dict:
+        metrics_data = await super()._prepare_metrics_data(match=match, tag=tag, data=data)
+        metrics_data.update({'tid': match.group('tid')})
+
+        return metrics_data
+
+    async def process_metrics(self, match: re.Match, tag: str, data: MessageDataType) -> None:
+        await super().process_metrics(match=match, tag=tag, data=data)
+
+        await self.redis_client.publish(
+            channel=self.METRIC_TASK_TAG, message=json.dumps(await self._prepare_metrics_data(match, tag, data))
+        )
