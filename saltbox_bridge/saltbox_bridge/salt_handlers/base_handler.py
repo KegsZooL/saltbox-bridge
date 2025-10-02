@@ -50,14 +50,14 @@ class BaseMessageHandler(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def tag_pattern(self) -> re.Pattern[str]: ...
+    def tag_patterns(self) -> list[re.Pattern[str]]: ...
 
     async def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
         return data
 
     async def handle(self, tag: str, data: MessageDataType) -> None:
         """
-        If tag matches tag_pattern, process message
+        If tag matches tag_patterns, process message
 
         Args:
             tag: salt message tag
@@ -66,13 +66,14 @@ class BaseMessageHandler(abc.ABC):
         Raises:
             StopProcessing: when no need to process the message with other handlers
         """
-        if match := self.tag_pattern.match(tag):
-            data = await self.normalize_data(match=match, tag=tag, data=data)
+        for tag_pattern in self.tag_patterns:
+            if match := tag_pattern.match(tag):
+                data = await self.normalize_data(match=match, tag=tag, data=data)
 
-            if self.can_process_metrics():
-                await self.process_metrics(match=match, tag=tag, data=data)
+                if self.can_process_metrics():
+                    await self.process_metrics(match=match, tag=tag, data=data)
 
-            return await self.process(match, data)
+                return await self.process(match, data)
 
         return None
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from salt.exceptions import SaltException  # type: ignore
 
@@ -17,7 +17,7 @@ class MinionStartedMessageHandler(BaseMessageHandler):
     A message handler for salt minion started messages
     """
 
-    tag_pattern = re.compile(r'salt/minion/(?P<mid>.+)/start')
+    tag_patterns: ClassVar[list[re.Pattern[str]]] = [re.compile(r'salt/minion/(?P<mid>.+)/start')]
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         mid = match.group('mid')

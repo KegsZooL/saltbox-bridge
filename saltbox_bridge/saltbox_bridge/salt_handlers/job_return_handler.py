@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from salt.utils import json  # type: ignore
 from saltbox_bridge_messages import (
@@ -25,7 +25,7 @@ class JobReturnMessageHandler(BaseMessageHandler):
     A message handler that handles salt job return messages
     """
 
-    tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')
+    tag_patterns: ClassVar[list[re.Pattern[str]]] = [re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')]
     METRIC_TAG = 'metrics:job_return'
     INVENTORY_SAVED_MSG_TAG = 'inventory_saved'
     INVENTORY_STATE = 'inventory'
@@ -177,7 +177,9 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
     A message handler that handles salt job return messages for tasks
     """
 
-    tag_pattern = re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
+    tag_patterns: ClassVar[list[re.Pattern[str]]] = [
+        re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
+    ]
     METRIC_TASK_TAG = 'metrics:task:job_return'
 
     _STATUS_SUCCESS = 'success'

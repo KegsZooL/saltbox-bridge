@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from saltbox_bridge_messages import BridgeMinionPresenceMessage
 
@@ -15,7 +15,7 @@ class PresenceMessageHandler(BaseMessageHandler):
     A message handler for salt presence messages
     """
 
-    tag_pattern = re.compile(r'salt/presence/present')
+    tag_patterns: ClassVar[list[re.Pattern[str]]] = [re.compile(r'salt/presence/present')]
 
     async def process(self, match: re.Match, data: dict[str, Any]) -> None:
         message = BridgeMinionPresenceMessage(

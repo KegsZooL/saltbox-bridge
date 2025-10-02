@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import ClassVar
 
 from redis.asyncio.client import Pipeline
 from salt.utils import json  # type: ignore
@@ -18,7 +19,7 @@ class JobNewMessageHandler(BaseMessageHandler):
     A message handler for new job salt message when
     """
 
-    tag_pattern = re.compile(r'^salt/job/(?P<jid>\d{20})/new$')
+    tag_patterns: ClassVar[list[re.Pattern[str]]] = [re.compile(r'^salt/job/(?P<jid>\d{20})/new$')]
     METRIC_TAG = 'metrics:new_job'
     # Mention: on salt-call call there is no salt/job/*/new event
     # (but salt/job/*/ret/* it is)
@@ -79,7 +80,9 @@ class JobNewForTaskMessageHandler(JobNewMessageHandler):
     A message handler for new job salt message when for task
     """
 
-    tag_pattern = re.compile(r'^salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new$')
+    tag_patterns: ClassVar[list[re.Pattern[str]]] = [
+        re.compile(r'^salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/new$')
+    ]
     METRIC_TASK_TAG = 'metrics:task:new_job'
 
     async def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:

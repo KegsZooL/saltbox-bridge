@@ -54,7 +54,7 @@ class SaltBridge:
             'salt_opts': self.salt_opts,
         }
 
-        self.handlers = {
+        self.handlers = [
             SaltMessageMetricMessageHandler(**handlers_args),
             JobNewMessageHandler(**handlers_args),
             JobNewForTaskMessageHandler(**handlers_args),
@@ -62,7 +62,7 @@ class SaltBridge:
             JobReturnForTaskMessageHandler(**handlers_args),
             PresenceMessageHandler(**handlers_args),
             MinionStartedMessageHandler(**handlers_args),
-        }
+        ]
 
     async def start(self) -> None:
         master_id: str = self.salt_opts['salt_box_master_id']
