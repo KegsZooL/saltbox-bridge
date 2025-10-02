@@ -20,7 +20,7 @@ router = RedisRouter(middlewares=[MastersAuthMiddleware])
 router_not_auth = RedisRouter()
 
 
-@router.subscriber('run_job')
+@router.subscriber('run_job', no_reply=True)
 async def run_job(
     message: CoreNewJobAsyncRequest,
     salt_connector: SaltConnector = Context(),  # noqa: B008
