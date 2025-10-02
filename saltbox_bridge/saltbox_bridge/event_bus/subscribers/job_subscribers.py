@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from faststream import Context, Logger
+from faststream import Context
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 from saltbox_bridge_messages import CoreNewJobAsyncRequest
@@ -20,18 +20,17 @@ router = RedisRouter(middlewares=[MastersAuthMiddleware])
 router_not_auth = RedisRouter()
 
 
-@router.subscriber("run_job")
+@router.subscriber('run_job')
 async def run_job(
     message: CoreNewJobAsyncRequest,
-    logger: Logger,
     salt_connector: SaltConnector = Context(),  # noqa: B008
-) -> str | None:
+) -> None:
     try:
         jid: str = await salt_connector.create_job_from_redis(
             hash_name=message.hash_name,
         )
-        logger.info("Created job: %s", jid)
-        return jid
+        LOGGER.debug('Created job: %s', jid)
     except CreateJobError as error:
-        logger.error(error)
-        return None
+        LOGGER.error(error)
+
+    return None
