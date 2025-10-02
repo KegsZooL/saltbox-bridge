@@ -83,8 +83,11 @@ class SaltConnector:
             LOGGER.exception(str(err))
             raise CreateJobError(str(err)) from err
 
-        await self.redis_client.hset(hash_name, 'status', 'processed')
-        await self.redis_client.expire(hash_name, 600)
+        async with self.redis_client.pipeline() as pipe:
+            pipe.hset(hash_name, 'status', 'processed')
+            pipe.expire(hash_name, 600)
+
+            await pipe.execute()
 
         return back_jid
 
