@@ -44,8 +44,9 @@ class SaltConnector:
         }
 
         ret = self.channel.send(load, timeout=60).get('load', {})
+        ret_jid: str = ret.get('jid', '')
 
-        return ret.get('jid', '')
+        return ret_jid
 
     @property
     def salt_client(self) -> LocalClient:
