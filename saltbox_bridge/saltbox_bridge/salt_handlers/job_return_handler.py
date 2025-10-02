@@ -70,8 +70,9 @@ class JobReturnMessageHandler(BaseMessageHandler):
                 pipe = pipe.expire(name=hash_name, time=SETTINGS.expire)
             await pipe.execute()
 
-        await self._update_job_returning(jid=jid, mid=mid, data=data)
-        await self.redis_client.publish(channel=hash_name, message=data_json)
+        await self._update_job_returning_and_publish_return(
+            jid=jid, mid=mid, hash_name=hash_name, data=data, data_json=data_json
+        )
 
         if function == 'grains.items':
             await self._process_grains(mid, data['return'])
@@ -84,7 +85,9 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         await self._send_presence(mid=mid, data=data)
 
-    async def _update_job_returning(self, jid: str, mid: str, data: dict) -> None:
+    async def _update_job_returning_and_publish_return(
+        self, jid: str, mid: str, hash_name: str, data: dict, data_json: str
+    ) -> None:
         logger.debug('Updating job for %s', mid)
         scored_jid = jid_to_epoch(jid)
 
@@ -96,8 +99,12 @@ class JobReturnMessageHandler(BaseMessageHandler):
             logger.debug('Failed to get job return for %s%: %s', jid, e)
             return
 
-        await self.redis_client.zremrangebyscore(name='jobs', min=scored_jid, max=scored_jid)
-        await self.redis_client.zadd(name='jobs', mapping={json.dumps(job_data): scored_jid})
+        async with self.redis_client.pipeline(transaction=True) as pipe:
+            pipe.zremrangebyscore(name='jobs', min=scored_jid, max=scored_jid)
+            pipe.zadd(name='jobs', mapping={json.dumps(job_data): scored_jid})
+            pipe.publish(channel=hash_name, message=data_json)
+
+            await pipe.execute()
 
     async def _notify_on_inventory_fun(self, jid: str, mid: str, data: dict[str, Any]) -> None:
         if data['retcode'] != 0:
