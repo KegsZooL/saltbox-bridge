@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from datetime import datetime
@@ -39,7 +40,10 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         logger.info('Job %s return for %s, function %s', jid, mid, function)
 
+        send_presence_task = asyncio.create_task(self._send_presence(mid=mid, data=data))
+
         await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
+        await send_presence_task
 
         raise StopProcessing()
 
@@ -63,16 +67,13 @@ class JobReturnMessageHandler(BaseMessageHandler):
         return False
 
     async def _process_return(self, jid: str, mid: str, function: str, data: dict, data_json: str) -> None:
-        hash_name = f'job:{jid}:return'
-        async with self.redis_client.pipeline(transaction=True) as pipe:
-            pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
-            if SETTINGS.expire is not None:
-                pipe = pipe.expire(name=hash_name, time=SETTINGS.expire)
-            await pipe.execute()
-
-        await self._update_job_returning_and_publish_return(
-            jid=jid, mid=mid, hash_name=hash_name, data=data, data_json=data_json
+        save_job_return_task = asyncio.create_task(
+            self._save_job_return_and_notify(jid=jid, mid=mid, data_json=data_json)
         )
+        update_job_task = asyncio.create_task(self._update_job_item(jid=jid, mid=mid, data=data))
+
+        await save_job_return_task
+        await update_job_task
 
         if function == 'grains.items':
             await self._process_grains(mid, data['return'])
@@ -83,11 +84,16 @@ class JobReturnMessageHandler(BaseMessageHandler):
             logger.debug('Got inventory state return for %s', mid)
             await self._notify_on_inventory_state(jid=jid, mid=mid, data=data)
 
-        await self._send_presence(mid=mid, data=data)
+    async def _save_job_return_and_notify(self, jid: str, mid: str, data_json: str) -> None:
+        hash_name = f'job:{jid}:return'
+        async with self.redis_client.pipeline() as pipe:
+            pipe = pipe.hset(name=hash_name, key=mid, value=data_json)
+            if SETTINGS.expire is not None:
+                pipe = pipe.expire(name=hash_name, time=SETTINGS.expire)
+            pipe.publish(channel=hash_name, message=data_json)
+            await pipe.execute()
 
-    async def _update_job_returning_and_publish_return(
-        self, jid: str, mid: str, hash_name: str, data: dict, data_json: str
-    ) -> None:
+    async def _update_job_item(self, jid: str, mid: str, data: dict) -> None:
         logger.debug('Updating job for %s', mid)
         scored_jid = jid_to_epoch(jid)
 
@@ -99,10 +105,9 @@ class JobReturnMessageHandler(BaseMessageHandler):
             logger.debug('Failed to get job return for %s%: %s', jid, e)
             return
 
-        async with self.redis_client.pipeline(transaction=True) as pipe:
+        async with self.redis_client.pipeline() as pipe:
             pipe.zremrangebyscore(name='jobs', min=scored_jid, max=scored_jid)
             pipe.zadd(name='jobs', mapping={json.dumps(job_data): scored_jid})
-            pipe.publish(channel=hash_name, message=data_json)
 
             await pipe.execute()
 
@@ -201,8 +206,12 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
 
         logger.info('Job %s (task %s) return for %s, function %s', jid, tid, mid, function)
 
+        send_presence_task = self._send_presence(mid=mid, data=data)
+        process_task_task = self._process_task(jid=jid, tid=tid, data_json=data_json)
+
         await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
-        await self._process_task(jid=jid, tid=tid, data_json=data_json)
+        await send_presence_task
+        await process_task_task
 
         raise StopProcessing()
 

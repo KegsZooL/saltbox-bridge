@@ -50,12 +50,12 @@ class JobNewMessageHandler(BaseMessageHandler):
         logger.info('New job: %s', jid)
 
         async with self.redis_client.pipeline() as pipe:
-            await self._save_job_pipeline(pipe, jid=jid, data_json=data_json)
+            self._save_job_pipeline(pipe, jid=jid, data_json=data_json)
             await pipe.execute()
 
         raise StopProcessing()
 
-    async def _save_job_pipeline(self, pipe: Pipeline, jid: str, data_json: str) -> Pipeline:
+    def _save_job_pipeline(self, pipe: Pipeline, jid: str, data_json: str) -> Pipeline:
         # TODO: Key should be uniq for master to prevent possible JID overlaps
         pipe = pipe.zadd(name='jobs', mapping={data_json: jid_to_epoch(jid)})
         pipe = pipe.publish(channel=f'job:{jid}:new', message=data_json)
@@ -98,7 +98,7 @@ class JobNewForTaskMessageHandler(JobNewMessageHandler):
         logger.info('New job (jid: %s) for task: %s', jid, tid)
 
         async with self.redis_client.pipeline() as pipe:
-            await self._save_job_pipeline(pipe, jid=jid, data_json=data_json)
+            self._save_job_pipeline(pipe, jid=jid, data_json=data_json)
             pipe = pipe.publish(channel=f'task:{tid}:job:{jid}:new', message=data_json)
             await pipe.execute()
 

@@ -75,8 +75,7 @@ class SaltBridge:
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
             while True:
-                await self.process(event_bus.get_event(full=True))
-                await asyncio.sleep(0.00001)
+                await self.process(event_bus.get_event(full=True, no_block=True))
 
     async def process(self, event: dict | None) -> None:
         if not event:

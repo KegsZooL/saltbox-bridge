@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     var_dir: DirectoryPath = Path('/var/lib/saltbox-bridge/')
     expire: int | None = 604800
     max_count_of_gather_minions: int = 100
+    faststream_app_sleep_time: float = 0.001
 
     # SSH server to obtain Salt.Box SLS files and modules
     salt_conf_server: str

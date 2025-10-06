@@ -75,7 +75,7 @@ async def _async_start(salt_opts: dict | None) -> None:
     )
 
     await salt_caller.sync_saltbox()
-    await app.run()
+    await app.run(sleep_time=SETTINGS.faststream_app_sleep_time)
 
 
 def start(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import asyncio
 import json
 import re
 from typing import Any, cast
@@ -70,12 +71,16 @@ class BaseMessageHandler(abc.ABC):
             if match := tag_pattern.match(tag):
                 data = await self.normalize_data(match=match, tag=tag, data=data)
 
+                process_metrics_task = None
                 if self.can_process_metrics():
-                    await self.process_metrics(match=match, tag=tag, data=data)
+                    process_metrics_task = asyncio.create_task(self.process_metrics(match=match, tag=tag, data=data))
 
-                return await self.process(match, data)
+                await self.process(match, data)
 
-        return None
+                if process_metrics_task is not None:
+                    await process_metrics_task
+
+                return
 
     def can_process_metrics(self) -> bool:
         if SETTINGS.is_metric_enabled and self.METRIC_TAG:
