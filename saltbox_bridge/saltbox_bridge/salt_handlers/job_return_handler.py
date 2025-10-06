@@ -42,8 +42,8 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         send_presence_task = asyncio.create_task(self._send_presence(mid=mid, data=data))
 
-        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
         await send_presence_task
+        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
 
         raise StopProcessing()
 
@@ -209,9 +209,9 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
         send_presence_task = self._send_presence(mid=mid, data=data)
         process_task_task = self._process_task(jid=jid, tid=tid, data_json=data_json)
 
-        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
         await send_presence_task
         await process_task_task
+        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
 
         raise StopProcessing()
 
