@@ -8,8 +8,8 @@ from salt.config import minion_config  # type: ignore
 from saltbox_bridge_messages import BridgeSyncDoneMessage, MasterSyncStatus
 
 from saltbox_bridge.config import HIERARHY, SETTINGS
-from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.exceptions import SaltCallerTypeError
+from saltbox_bridge.utils.core_connector import CoreConnector
 from saltbox_bridge.utils.system import utc_now
 
 logger = logging.getLogger(__name__)

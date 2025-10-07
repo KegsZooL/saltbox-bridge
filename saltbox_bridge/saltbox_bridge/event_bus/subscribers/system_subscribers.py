@@ -17,8 +17,8 @@ from saltbox_bridge_messages import (
 )
 
 from saltbox_bridge.config import SETTINGS
-from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
+from saltbox_bridge.utils.core_connector import CoreConnector
 from saltbox_bridge.utils.salt_bus import FakeJobNewEventGenerator
 from saltbox_bridge.utils.salt_caller import SaltCaller
 from saltbox_bridge.utils.system import get_random_string, utc_now
@@ -77,13 +77,9 @@ async def burst_jobs_test(
     )
 
     async with redis_client.pipeline() as pipe:
-        pipe.hset(
-            name=BURST_JOBS_TEST_REPORT_HASH_NAME,
-            key=message.id,
-            value=report.model_dump_json())
+        pipe.hset(name=BURST_JOBS_TEST_REPORT_HASH_NAME, key=message.id, value=report.model_dump_json())
         if SETTINGS.expire is not None:
             pipe = pipe.hexpire(  # type: ignore[attr-defined]
-                BURST_JOBS_TEST_REPORT_HASH_NAME,
-                SETTINGS.expire,
-                message.id)
+                BURST_JOBS_TEST_REPORT_HASH_NAME, SETTINGS.expire, message.id
+            )
         await pipe.execute()

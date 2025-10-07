@@ -13,19 +13,16 @@ if TYPE_CHECKING:
 from salt.utils.event import get_master_event  # type: ignore[import-untyped]
 
 from saltbox_bridge.config import SETTINGS, configure_logging
-from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.exceptions import StopProcessing
 from saltbox_bridge.redis import get_redis_client
-from saltbox_bridge.salt_handlers.job_return_handler import (
-    JobReturnForTaskMessageHandler,
-    JobReturnMessageHandler,
-)
+from saltbox_bridge.salt_handlers.job_return_handler import JobReturnMessageHandler
 from saltbox_bridge.salt_handlers.metrics_handler import SaltMessageMetricMessageHandler
 from saltbox_bridge.salt_handlers.minion_started_handler import MinionStartedMessageHandler
-from saltbox_bridge.salt_handlers.new_job_handler import JobNewForTaskMessageHandler, JobNewMessageHandler
+from saltbox_bridge.salt_handlers.new_job_handler import JobNewMessageHandler
 from saltbox_bridge.salt_handlers.presence_handler import PresenceMessageHandler
+from saltbox_bridge.utils.core_connector import CoreConnector
 
 LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +31,7 @@ class HandlersArgs(TypedDict):
     redis_client: Redis
     broker: RedisBroker
     salt_opts: dict
+    core_connector: CoreConnector
 
 
 class SaltBridge:
@@ -43,6 +41,11 @@ class SaltBridge:
     ) -> None:
         self.redis_client = get_redis_client()
         self.salt_opts = salt_opts
+        self.master_id: str = self.salt_opts['salt_box_master_id']
+        self.core_connector = CoreConnector(master_id=self.master_id)
+
+        context.set_global('core_connector', self.core_connector)
+        context.set_global('master_id', self.master_id)
 
         self.broker = get_faststream_broker(
             redis_conf=SETTINGS.faststream_redis_conf,
@@ -52,26 +55,19 @@ class SaltBridge:
             'redis_client': self.redis_client,
             'broker': self.broker,
             'salt_opts': self.salt_opts,
+            'core_connector': self.core_connector,
         }
 
         self.handlers = [
             SaltMessageMetricMessageHandler(**handlers_args),
             JobNewMessageHandler(**handlers_args),
-            JobNewForTaskMessageHandler(**handlers_args),
             JobReturnMessageHandler(**handlers_args),
-            JobReturnForTaskMessageHandler(**handlers_args),
             PresenceMessageHandler(**handlers_args),
             MinionStartedMessageHandler(**handlers_args),
         ]
 
     async def start(self) -> None:
-        master_id: str = self.salt_opts['salt_box_master_id']
-        core_connector = CoreConnector(master_id=master_id)
-
-        context.set_global('core_connector', core_connector)
-        context.set_global('master_id', master_id)
-
-        await core_connector.wait_success_connection()
+        await self.core_connector.wait_success_connection()
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
             while True:

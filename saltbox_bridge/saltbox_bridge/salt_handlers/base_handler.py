@@ -12,6 +12,7 @@ from salt.client import LocalClient  # type: ignore
 from saltbox_bridge_messages import BridgeMessageBase
 
 from saltbox_bridge.config import SETTINGS
+from saltbox_bridge.utils.core_connector import CoreConnector
 
 MessageDataType = dict[str, Any]
 
@@ -28,10 +29,12 @@ class BaseMessageHandler(abc.ABC):
     def __init__(
         self,
         redis_client: redis.Redis,
+        core_connector: CoreConnector,
         broker: RedisBroker,
         salt_opts: dict,
     ) -> None:
         self.redis_client = redis_client
+        self.core_connector = core_connector
         self.broker = broker
         self.salt_opts = salt_opts
 
@@ -69,18 +72,20 @@ class BaseMessageHandler(abc.ABC):
         """
         for tag_pattern in self.tag_patterns:
             if match := tag_pattern.match(tag):
-                data = await self.normalize_data(match=match, tag=tag, data=data)
-
-                process_metrics_task = None
-                if self.can_process_metrics():
-                    process_metrics_task = asyncio.create_task(self.process_metrics(match=match, tag=tag, data=data))
-
-                await self.process(match, data)
-
-                if process_metrics_task is not None:
-                    await process_metrics_task
-
+                await self._handle(match=match, tag=tag, data=data)
                 return
+
+    async def _handle(self, match: re.Match, tag: str, data: MessageDataType) -> None:
+        data = await self.normalize_data(match=match, tag=tag, data=data)
+
+        process_metrics_task = None
+        if self.can_process_metrics():
+            process_metrics_task = asyncio.create_task(self.process_metrics(match=match, tag=tag, data=data))
+
+        await self.process(match, data)
+
+        if process_metrics_task is not None:
+            await process_metrics_task
 
     def can_process_metrics(self) -> bool:
         if SETTINGS.is_metric_enabled and self.METRIC_TAG:

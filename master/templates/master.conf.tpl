@@ -18,6 +18,7 @@ presence_events: True
 engines:
   - saltbox_delator: {}
   - saltbox_agent: {}
+  - saltbox_job_runner: {}
 ext_pillar:
   - redis_pillar:
       salt_box_env_file: '/etc/salt/salt_box.d/.env'

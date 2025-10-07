@@ -16,7 +16,6 @@ from saltbox_bridge_messages import (
 from saltbox_bridge.config import SETTINGS
 from saltbox_bridge.exceptions import StopProcessing
 from saltbox_bridge.salt_handlers.base_handler import BaseMessageHandler, MessageDataType
-from saltbox_bridge.utils.jid import jid_to_epoch
 
 logger = logging.getLogger(__name__)
 
@@ -28,21 +27,61 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
     tag_patterns: ClassVar[list[re.Pattern[str]]] = [re.compile(r'salt/job/(?P<jid>\d{20})/ret/(?P<mid>.+)')]
     METRIC_TAG = 'metrics:job_return'
+    METRIC_TASK_TAG = 'metrics:task:job_return'
     INVENTORY_SAVED_MSG_TAG = 'inventory_saved'
     INVENTORY_STATE = 'inventory'
 
-    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
+    _STATUS_SUCCESS = 'success'
+    _STATUS_PARTIAL_SUCCESS = 'partial_success'
+    _STATUS_FAILED = 'failed'
+
+    async def _handle(self, match: re.Match, tag: str, data: MessageDataType) -> None:
+        data = await self.normalize_data(match=match, tag=tag, data=data)
+
+        jid = match.group('jid')
+        job = await self.core_connector.get_job(jid)
+
+        tid: str | None = None
+
+        if job and 'source' in job.keys() and job['source'].get('type') == 'task':
+            tid = job['source']['id']
+
+        process_metrics_task = None
+        if self.can_process_metrics():
+            process_metrics_task = asyncio.create_task(self.process_metrics(match=match, tag=tag, data=data, tid=tid))
+
+        await self.process(match=match, data=data, job=job, tid=tid)
+
+        if process_metrics_task is not None:
+            await process_metrics_task
+
+    async def normalize_data(self, match: re.Match, tag: str, data: MessageDataType) -> MessageDataType:
+        data = await super().normalize_data(match=match, tag=tag, data=data)
+        data['salt_master'] = self.master_id
+
+        return data
+
+    async def process(
+        self, match: re.Match, data: MessageDataType, job: dict[str, Any] | None = None, tid: str | None = None
+    ) -> None:
         jid = match.group('jid')
         mid = match.group('mid')
-        data['salt_master'] = self.salt_opts['salt_box_master_id']
         function = data['fun']
         data_json = json.dumps(data)
 
-        logger.info('Job %s return for %s, function %s', jid, mid, function)
+        if tid:
+            logger.info('Job %s (task %s) return for %s, function %s', jid, tid, mid, function)
+        else:
+            logger.info('Job %s return for %s, function %s', jid, mid, function)
 
         send_presence_task = asyncio.create_task(self._send_presence(mid=mid, data=data))
+        process_task_task = None
+        if tid:
+            process_task_task = self._process_task(jid=jid, tid=tid, data_json=data_json)
 
         await send_presence_task
+        if process_task_task:
+            await process_task_task
         await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
 
         raise StopProcessing()
@@ -84,6 +123,9 @@ class JobReturnMessageHandler(BaseMessageHandler):
             logger.debug('Got inventory state return for %s', mid)
             await self._notify_on_inventory_state(jid=jid, mid=mid, data=data)
 
+    async def _process_task(self, jid: str, tid: str, data_json: str | bytes) -> None:
+        await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:return', message=data_json)
+
     async def _save_job_return_and_notify(self, jid: str, mid: str, data_json: str) -> None:
         hash_name = f'job:{jid}:return'
         async with self.redis_client.pipeline() as pipe:
@@ -95,21 +137,34 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
     async def _update_job_item(self, jid: str, mid: str, data: dict) -> None:
         logger.debug('Updating job for %s', mid)
-        scored_jid = jid_to_epoch(jid)
+        job = await self.core_connector.get_job(jid=jid)
 
-        try:
-            jobs_raw_data = await self.redis_client.zrange(name='jobs', start=scored_jid, end=scored_jid, byscore=True)  # type: ignore[call-overload]
-            job_data: dict[str, Any] = json.loads(jobs_raw_data[0])
-            job_data.setdefault('returning', {})[mid] = data['retcode'] == 0
-        except Exception as e:
-            logger.debug('Failed to get job return for %s%: %s', jid, e)
+        if not job:
             return
 
-        async with self.redis_client.pipeline() as pipe:
-            pipe.zremrangebyscore(name='jobs', min=scored_jid, max=scored_jid)
-            pipe.zadd(name='jobs', mapping={json.dumps(job_data): scored_jid})
+        job.setdefault('minions', [])
+        new_data: dict[str, Any] = {
+            'returning': job.get('returning', {}),
+        }
 
-            await pipe.execute()
+        if not job:
+            logger.debug('Failed to get job return for %s%: %s', jid)
+            return
+
+        job.setdefault('returning', {})[mid] = data['retcode'] == 0
+        is_finished = all(mid in job['returning'].keys() for mid in job['minions'])
+
+        if is_finished:
+            new_data['status'] = 'finished'
+        else:
+            new_data['status'] = 'waiting_returns'
+
+        await self.core_connector.update_or_create_job(
+            jid=jid,
+            data=new_data,
+            job=job,
+            notify_channel='job:{jid}:update',
+        )
 
     async def _notify_on_inventory_fun(self, jid: str, mid: str, data: dict[str, Any]) -> None:
         if data['retcode'] != 0:
@@ -164,57 +219,6 @@ class JobReturnMessageHandler(BaseMessageHandler):
 
         await self.send_message(message=message, message_tag='presence')
 
-    async def _prepare_metrics_data(self, match: re.Match, tag: str, data: MessageDataType) -> dict:
-        metrics_data = await super()._prepare_metrics_data(match=match, tag=tag, data=data)
-        metrics_data.update(
-            {
-                'jid': match.group('jid'),
-                'minion_id': match.group('mid'),
-                'stamp': data['_stamp'],
-            }
-        )
-
-        return metrics_data
-
-
-class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
-    """
-    A message handler that handles salt job return messages for tasks
-    """
-
-    tag_patterns: ClassVar[list[re.Pattern[str]]] = [
-        re.compile(r'salt/job/(?P<jid>\d{20})-t(?P<tid>[a-zA-Z0-9]{24})/ret/(?P<mid>.+)')
-    ]
-    METRIC_TASK_TAG = 'metrics:task:job_return'
-
-    _STATUS_SUCCESS = 'success'
-    _STATUS_PARTIAL_SUCCESS = 'partial_success'
-    _STATUS_FAILED = 'failed'
-
-    async def _process_task(self, jid: str, tid: str, data_json: str | bytes) -> None:
-        await self.redis_client.publish(channel=f'task:{tid}:job:{jid}:return', message=data_json)
-
-    async def process(self, match: re.Match, data: dict[str, Any]) -> None:
-        jid = match.group('jid')
-        tid = match.group('tid')
-        mid = match.group('mid')
-
-        data['jid'] = jid
-        data['salt_master'] = self.salt_opts['salt_box_master_id']
-        function = data['fun']
-        data_json = json.dumps(data)
-
-        logger.info('Job %s (task %s) return for %s, function %s', jid, tid, mid, function)
-
-        send_presence_task = self._send_presence(mid=mid, data=data)
-        process_task_task = self._process_task(jid=jid, tid=tid, data_json=data_json)
-
-        await send_presence_task
-        await process_task_task
-        await self._process_return(jid=jid, mid=mid, function=function, data=data, data_json=data_json)
-
-        raise StopProcessing()
-
     async def _extract_job_status(self, data: MessageDataType) -> str:
         if data.get(self._STATUS_SUCCESS, False):
             return self._STATUS_SUCCESS
@@ -228,15 +232,28 @@ class JobReturnForTaskMessageHandler(JobReturnMessageHandler):
                 return self._STATUS_PARTIAL_SUCCESS
         return self._STATUS_FAILED
 
-    async def _prepare_metrics_data(self, match: re.Match, tag: str, data: MessageDataType) -> dict:
+    async def _prepare_metrics_data(
+        self, match: re.Match, tag: str, data: MessageDataType, tid: str | None = None
+    ) -> dict:
         metrics_data = await super()._prepare_metrics_data(match=match, tag=tag, data=data)
-        metrics_data.update({'tid': match.group('tid'), 'job_status': await self._extract_job_status(data)})
+        metrics_data.update(
+            {
+                'jid': match.group('jid'),
+                'minion_id': match.group('mid'),
+                'stamp': data['_stamp'],
+            }
+        )
+
+        if tid:
+            metrics_data.update({'tid': tid, 'job_status': await self._extract_job_status(data)})
 
         return metrics_data
 
-    async def process_metrics(self, match: re.Match, tag: str, data: MessageDataType) -> None:
+    async def process_metrics(self, match: re.Match, tag: str, data: MessageDataType, tid: str | None = None) -> None:
         await super().process_metrics(match=match, tag=tag, data=data)
 
-        await self.redis_client.publish(
-            channel=self.METRIC_TASK_TAG, message=json.dumps(await self._prepare_metrics_data(match, tag, data))
-        )
+        if tid:
+            await self.redis_client.publish(
+                channel=self.METRIC_TASK_TAG,
+                message=json.dumps(await self._prepare_metrics_data(match=match, tag=tag, data=data, tid=tid)),
+            )

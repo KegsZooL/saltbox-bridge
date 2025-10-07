@@ -24,10 +24,10 @@ import salt.config  # type: ignore[import-untyped]
 from faststream import ContextRepo
 
 from saltbox_bridge.config import SETTINGS, configure_logging
-from saltbox_bridge.event_bus.core_connector import CoreConnector
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
 from saltbox_bridge.event_bus.subscribers import router
 from saltbox_bridge.redis import get_redis_client
+from saltbox_bridge.utils.core_connector import CoreConnector
 from saltbox_bridge.utils.salt_caller import SaltCaller
 from saltbox_bridge.utils.salt_connector import SaltConnector
 
@@ -48,11 +48,10 @@ async def _async_start(salt_opts: dict | None) -> None:
     await core_connector.wait_success_connection()
 
     @asynccontextmanager
-    async def lifespan(context: ContextRepo) -> AsyncIterator:
+    async def lifespan(context: ContextRepo) -> AsyncIterator:  # noqa: RUF029
         redis_client = get_redis_client()
 
         salt_connector = SaltConnector(salt_opts=salt_opts, redis_client=redis_client)
-        await salt_connector.create_all_jobs_from_redis()
 
         context.set_global('redis_client', redis_client)
         context.set_global('salt_connector', salt_connector)
