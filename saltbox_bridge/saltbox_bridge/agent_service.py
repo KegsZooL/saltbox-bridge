@@ -25,13 +25,12 @@ from faststream import ContextRepo
 
 from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
+from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.event_bus.subscribers import router
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.core_connector import CoreConnector
 from saltbox_bridge.utils.salt_caller import SaltCaller
 from saltbox_bridge.utils.salt_connector import SaltConnector
-
-# from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,7 @@ async def _async_start(salt_opts: dict | None) -> None:
         redis_conf=SETTINGS.faststream_redis_conf,
         lifespan=lifespan,
         logger=logging.getLogger(f'{__name__}.faststream'),
-        # middlewares=[MastersAuthMiddleware],
+        middlewares=[MastersAuthMiddleware],
     )
 
     await salt_caller.sync_saltbox()

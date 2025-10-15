@@ -1,7 +1,24 @@
+# Copyright 2025 Ivan Moshkov
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+from typing import Any
 
 import salt.config  # type: ignore[import-untyped]
 from salt.exceptions import SaltException  # type: ignore
@@ -15,7 +32,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class JobRunner:
-    JOBS_TO_CREATE_SET_NAME = 'jobs:to_create'
+    JOBS_TO_CREATE_SET_NAME_PATTERN = 'jobs:{master_id}:to_create'
 
     def __init__(
         self,
@@ -24,41 +41,47 @@ class JobRunner:
         self.redis_client = get_redis_client()
         self.salt_opts = salt_opts
         self.master_id: str = self.salt_opts['salt_box_master_id']
-        self.core_connector = CoreConnector(master_id=self.master_id, redis_client=self.redis_client)
+        self.core_connector = CoreConnector(master_id=self.master_id)
         self.salt_connector = SaltConnector(salt_opts=salt_opts, redis_client=self.redis_client)
+        self.jobs_to_create_list_name = self.JOBS_TO_CREATE_SET_NAME_PATTERN.format(master_id=self.master_id)
 
     async def start(self) -> None:
         await self.core_connector.wait_success_connection()
 
         while True:
-            jids: list[bytes] = await self.redis_client.spop(self.JOBS_TO_CREATE_SET_NAME, SETTINGS.runner_batch_size)  # type: ignore
-            for jid in jids:
-                await self.process(jid)
+            jobs_data: list[bytes] | None = await self.redis_client.lpop(
+                self.jobs_to_create_list_name, SETTINGS.runner_batch_size
+            )
+
+            if not jobs_data:
+                continue
+
+            for job_data in jobs_data:
+                await self.process(json.loads(job_data.decode()))
             await asyncio.sleep(SETTINGS.runner_sleep_timeout)
 
-    async def process(self, jid: bytes) -> None:
-        if not jid:
-            return
-
-        job = await self.core_connector.get_job(jid.decode())
-        if not job:
-            return
-
-        LOGGER.debug('Processing job: %s', job)
+    async def process(self, job_data: dict[str, Any]) -> None:
+        LOGGER.debug('Processing job: %s', job_data)
 
         try:
             self.salt_connector.create_job_by_zeromq(
-                jid=job['jid'],
-                tgt=job['tgt'],
-                tgt_type=job['tgt_type'],
-                fun=job['fun'],
-                fun_args=job.get('arg', []) or [],
-                fun_kwargs=job.get('kwarg', {}) or {},
+                jid=job_data['jid'],
+                tgt=job_data['tgt'],
+                tgt_type=job_data['tgt_type'],
+                fun=job_data['fun'],
+                fun_args=job_data.get('arg', []) or [],
+                fun_kwargs=job_data.get('kwarg', {}) or {},
             )
-            await self.core_connector.update_or_create_job(jid=job['jid'], data={'status': 'running'}, job=job)
         except SaltException as err:
             LOGGER.exception(str(err))
-            await self.redis_client.sadd(self.JOBS_TO_CREATE_SET_NAME, jid)
+            job_data.setdefault('retries', 0)
+            job_data['retries'] += 1
+
+            if job_data['reties'] > SETTINGS.runner_max_retries_to_run_job:
+                LOGGER.debug('Job reached max retries, skipping job: %s', job_data)
+                return
+
+            await self.redis_client.lpush(self.jobs_to_create_list_name, json.dumps(job_data))
 
 
 async def _async_start(salt_opts: dict | None) -> None:

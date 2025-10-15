@@ -1,37 +1,36 @@
+# Copyright 2025 Anton Karmanov, Ivan Moshkov
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any
 
 import salt.config  # type: ignore[import-untyped]
-from faststream import context
 
 if TYPE_CHECKING:
-    from faststream.redis import RedisBroker
-    from redis.asyncio.client import Redis
+    from redis import exceptions as redis_exceptions
 from salt.utils.event import get_master_event  # type: ignore[import-untyped]
 
-from saltbox_bridge.config import SETTINGS, configure_logging
-from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
-from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
-from saltbox_bridge.exceptions import StopProcessing
+from saltbox_bridge.config import configure_logging
 from saltbox_bridge.redis import get_redis_client
-from saltbox_bridge.salt_handlers.job_return_handler import JobReturnMessageHandler
-from saltbox_bridge.salt_handlers.metrics_handler import SaltMessageMetricMessageHandler
-from saltbox_bridge.salt_handlers.minion_started_handler import MinionStartedMessageHandler
-from saltbox_bridge.salt_handlers.new_job_handler import JobNewMessageHandler
-from saltbox_bridge.salt_handlers.presence_handler import PresenceMessageHandler
 from saltbox_bridge.utils.core_connector import CoreConnector
 
 LOGGER = logging.getLogger(__name__)
-
-
-class HandlersArgs(TypedDict):
-    redis_client: Redis
-    broker: RedisBroker
-    salt_opts: dict
-    core_connector: CoreConnector
 
 
 class SaltBridge:
@@ -43,28 +42,7 @@ class SaltBridge:
         self.salt_opts = salt_opts
         self.master_id: str = self.salt_opts['salt_box_master_id']
         self.core_connector = CoreConnector(master_id=self.master_id)
-
-        context.set_global('core_connector', self.core_connector)
-        context.set_global('master_id', self.master_id)
-
-        self.broker = get_faststream_broker(
-            redis_conf=SETTINGS.faststream_redis_conf,
-            middlewares=[MastersAuthMiddleware],
-        )
-        handlers_args: HandlersArgs = {
-            'redis_client': self.redis_client,
-            'broker': self.broker,
-            'salt_opts': self.salt_opts,
-            'core_connector': self.core_connector,
-        }
-
-        self.handlers = [
-            SaltMessageMetricMessageHandler(**handlers_args),
-            JobNewMessageHandler(**handlers_args),
-            JobReturnMessageHandler(**handlers_args),
-            PresenceMessageHandler(**handlers_args),
-            MinionStartedMessageHandler(**handlers_args),
-        ]
+        self.local_buffer: list[dict] = []
 
     async def start(self) -> None:
         await self.core_connector.wait_success_connection()
@@ -72,6 +50,20 @@ class SaltBridge:
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
             while True:
                 await self.process(event_bus.get_event(full=True, no_block=True))
+
+    async def _send_from_local_buffer(self) -> None:
+        for event in self.local_buffer:
+            await self._send_to_events_buffer(tag=event['tag'], data=event['data'])
+
+    async def _send_to_events_buffer(self, tag: str, data: dict[str, Any]) -> None:
+        try:
+            await self.redis_client.rpush(
+                f'salt-events:{self.master_id}:to_process',
+                json.dumps({'master_id': self.master_id, 'tag': tag, 'data': data}),
+            )
+        except redis_exceptions.RedisError:
+            LOGGER.exception('Redis error')
+            self.local_buffer.append({'tag': tag, 'data': data})
 
     async def process(self, event: dict | None) -> None:
         if not event:
@@ -82,12 +74,8 @@ class SaltBridge:
 
         LOGGER.debug('%s got event with tag "%s"', __name__, tag)
 
-        try:
-            for handler in self.handlers:
-                await handler.handle(tag, data)
-        except StopProcessing:
-            LOGGER.debug('End message processing')
-            return
+        await self._send_from_local_buffer()
+        await self._send_to_events_buffer(tag, data)
 
 
 async def _async_start(salt_opts: dict | None) -> None:

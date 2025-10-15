@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
 import logging
 from asyncio import sleep
 from datetime import datetime, timedelta
 from typing import Any
 
 from faststream.redis import RedisBroker
-from redis.asyncio.client import Redis
 from saltbox_bridge_messages import (
     BridgeAuthRequest,
     BridgeMessageBase,
@@ -19,9 +17,7 @@ from saltbox_bridge_messages import (
 from saltbox_bridge.config import HIERARHY
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_broker
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
-from saltbox_bridge.exceptions import CoreConnectionTimeoutError, GetJobError
-from saltbox_bridge.redis import get_redis_client
-from saltbox_bridge.utils.jid import jid_to_epoch
+from saltbox_bridge.exceptions import CoreConnectionTimeoutError
 from saltbox_bridge.utils.system import utc_now
 
 logger = logging.getLogger(__name__)
@@ -30,18 +26,11 @@ logger = logging.getLogger(__name__)
 class CoreConnector:
     CONNECT_RETRY_INTERVAL_SEC = 10
 
-    def __init__(self, master_id: str, redis_client: Redis | None = None) -> None:
+    def __init__(self, master_id: str) -> None:
         self.master_id = master_id
         self.master_status = MasterStatus.NEW
         self.is_connected = False
         self.dt_last_check: datetime | None = None
-        self._redis_client: Redis | None = None
-
-    @property
-    def redis_client(self) -> Redis:
-        if self._redis_client is None:
-            self._redis_client = get_redis_client()
-        return self._redis_client
 
     async def send_messagee(
         self,
@@ -129,51 +118,3 @@ class CoreConnector:
             await sleep(self.CONNECT_RETRY_INTERVAL_SEC)
 
         logger.info('Connection to Core succeed')
-
-    async def get_job(self, jid: str) -> dict[str, Any] | None:
-        ts = jid_to_epoch(jid)
-        job_data = await self.redis_client.zrange('jobs', start=ts, end=ts, byscore=True)  # type: ignore[call-overload]
-
-        if job_data:
-            if len(job_data) > 1:
-                msg = f'Multiple jobs for JID {jid}'
-                raise GetJobError(msg)
-
-            job: dict[str, Any] = json.loads(job_data[0])
-            return job
-
-        return None
-
-    async def update_or_create_job(
-        self, jid: str, data: dict, job: dict[str, Any] | None = None, notify_channel: str | None = None
-    ) -> dict[str, Any] | None:
-        if not job or job.get('jid') != jid:
-            job = await self.get_job(jid) or {}
-
-        job_defaults = {
-            'jid': jid,
-            'user': {'sub': 'system', 'email_verified': True, 'name': 'System', 'email': 'system@localhost'},
-            'source': {'type': 'unknown'},
-            'salt_master': self.master_id,
-            'returning': {},
-            'system_user': 'root',
-        }
-
-        for key, value in job_defaults.items():
-            job.setdefault(key, value)
-
-        for key, value in data.items():
-            job[key] = value
-
-        scored_jid = jid_to_epoch(jid)
-        data_json = json.dumps(job)
-        async with self.redis_client.pipeline() as pipe:
-            pipe.zremrangebyscore(name='jobs', min=scored_jid, max=scored_jid)
-            pipe.zadd(name='jobs', mapping={data_json: scored_jid})
-
-            if notify_channel:
-                pipe = pipe.publish(channel=notify_channel.format(jid=jid), message=data_json)
-
-            await pipe.execute()
-
-        return job

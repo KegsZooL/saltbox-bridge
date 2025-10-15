@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     faststream_app_sleep_time: float = 0.001
     runner_sleep_timeout: float = 0.00001
     runner_batch_size: int = 50
+    runner_max_retries_to_run_job: int = 10
 
     # SSH server to obtain Salt.Box SLS files and modules
     salt_conf_server: str
