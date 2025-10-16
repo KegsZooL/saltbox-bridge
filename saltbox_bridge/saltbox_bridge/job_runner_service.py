@@ -44,6 +44,7 @@ class JobRunner:
         self.core_connector = CoreConnector(master_id=self.master_id)
         self.salt_connector = SaltConnector(salt_opts=salt_opts, redis_client=self.redis_client)
         self.jobs_to_create_list_name = self.JOBS_TO_CREATE_SET_NAME_PATTERN.format(master_id=self.master_id)
+        self.background_tasks: set[asyncio.Task] = set()
 
     async def start(self) -> None:
         await self.core_connector.wait_success_connection()
@@ -57,12 +58,13 @@ class JobRunner:
                 continue
 
             for job_data in jobs_data:
-                await self.process(json.loads(job_data.decode()))
+                task = asyncio.create_task(self.process(json.loads(job_data.decode())))
+                self.background_tasks.add(task)
+                task.add_done_callback(self.background_tasks.discard)
+
             await asyncio.sleep(SETTINGS.runner_sleep_timeout)
 
     async def process(self, job_data: dict[str, Any]) -> None:
-        LOGGER.debug('Processing job: %s', job_data)
-
         try:
             self.salt_connector.create_job_by_zeromq(
                 jid=job_data['jid'],

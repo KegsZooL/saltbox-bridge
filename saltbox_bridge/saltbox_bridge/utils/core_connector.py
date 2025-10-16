@@ -56,7 +56,7 @@ class CoreConnector:
         broker: RedisBroker | None = None,
         is_need_auth: bool = False,
     ) -> Any:
-        logger.info('Sending message to Core: %s', message_tag)
+        logger.debug('Sending message to Core: %s', message_tag)
         if not broker:
             if is_need_auth:
                 broker = get_faststream_broker(middlewares=[MastersAuthMiddleware])
