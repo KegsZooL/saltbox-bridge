@@ -76,3 +76,15 @@ class SaltCaller:
             time=utc_now(),
         )
         await self.core_connector.send_messagee(message=notification, message_tag='sync_saltbox_done')
+
+    def encrypt_data(
+        self,
+        text: str,
+        recipients: str | list[str] | None = None,
+        gnupghome: str = '/etc/salt/gpgkeys',
+    ) -> Any:
+        kwargs: dict[str, Any] = {'text': text, 'gnupghome': gnupghome, 'bare': True}
+        if recipients:
+            kwargs['recipients'] = recipients
+
+        return self.caller.cmd('gpg.encrypt', **kwargs)
