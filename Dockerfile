@@ -48,12 +48,13 @@ RUN \
 set -e
 mkdir --parents /var/cache/apt/archives/partial/ /var/lib/apt/lists/partial/
 apt-get update
-apt-get install --yes gettext git glibc-utils openssh-clients rsync
+apt-get install --yes gettext git glibc-utils openssh-clients rsync gnupg
 EOF
 ENV PIP_CMD=salt-pip
 # To avoid error messag on cleanup keys
 RUN mkdir --parents /var/cache/salt/master/ /var/lib/saltbox-bridge/
 COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
+COPY --chmod=755 master/gen_gpg.sh /usr/local/bin/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
 COPY master/salt_master_local/ /srv/salt_master_local/
