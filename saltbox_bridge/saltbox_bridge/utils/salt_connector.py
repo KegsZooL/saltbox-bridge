@@ -51,7 +51,25 @@ class SaltConnector:
         return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
 
     async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> Any | list[str]:
-        return self.salt_client.gather_minions(tgt, tgt_type)
+
+        if tgt_type != 'pillar':
+            return self.salt_client.gather_minions(tgt, tgt_type)
+
+        key, sep, expected = tgt.partition(':')
+        if not sep:
+            return []
+
+        minions = self.salt_client.cmd(
+                '*', 'pillar.get', [key])
+
+        def matches(value: object) -> bool:
+            if isinstance(value, (list, tuple, set)):
+                return expected in value
+            if isinstance(value, dict):
+                return expected in value or expected in value.values()
+            return str(value) == expected
+
+        return [mid for mid, value in minions.items() if matches(value)]
 
     async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict] | Any:
         return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun='saltutil.refresh_pillar')
