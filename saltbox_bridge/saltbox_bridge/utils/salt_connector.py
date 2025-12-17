@@ -59,8 +59,7 @@ class SaltConnector:
         if not sep:
             return []
 
-        minions = self.salt_client.cmd(
-                '*', 'pillar.get', [key])
+        minions = self.salt_client.cmd('*', 'pillar.get', [key])
 
         def matches(value: object) -> bool:
             if isinstance(value, (list, tuple, set)):
