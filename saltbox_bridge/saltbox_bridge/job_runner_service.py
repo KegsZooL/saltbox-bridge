@@ -79,7 +79,7 @@ class JobRunner:
             job_data.setdefault('retries', 0)
             job_data['retries'] += 1
 
-            if job_data['reties'] > SETTINGS.runner_max_retries_to_run_job:
+            if job_data['retries'] > SETTINGS.runner_max_retries_to_run_job:
                 LOGGER.debug('Job reached max retries, skipping job: %s', job_data)
                 return
 
