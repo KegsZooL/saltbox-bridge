@@ -21,12 +21,11 @@ import logging
 from typing import Any
 
 import salt.config  # type: ignore[import-untyped]
-from salt.exceptions import SaltException  # type: ignore
 
 from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.core_connector import CoreConnector
-from saltbox_bridge.utils.salt_connector import SaltConnector
+from saltbox_bridge.utils.salt_connector import JobResult, SaltConnector
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,17 +64,17 @@ class JobRunner:
             await asyncio.sleep(SETTINGS.runner_sleep_timeout)
 
     async def process(self, job_data: dict[str, Any]) -> None:
-        try:
-            self.salt_connector.create_job_by_zeromq(
-                jid=job_data['jid'],
-                tgt=job_data['tgt'],
-                tgt_type=job_data['tgt_type'],
-                fun=job_data['fun'],
-                fun_args=job_data.get('arg', []) or [],
-                fun_kwargs=job_data.get('kwarg', {}) or {},
-            )
-        except SaltException as err:
-            LOGGER.exception(str(err))
+        result: JobResult[str] = await self.salt_connector.publish_job_via_zeromq(
+               jid=job_data['jid'],
+               tgt=job_data['tgt'],
+               tgt_type=job_data['tgt_type'],
+               fun=job_data['fun'],
+               fun_args=job_data.get('arg', []) or [],
+               fun_kwargs=job_data.get('kwarg', {}) or {},
+        )
+        # TODO: Additional processing is needed
+        if result.exc:
+            LOGGER.error(str(result.exc))
             job_data.setdefault('retries', 0)
             job_data['retries'] += 1
 
