@@ -1,19 +1,32 @@
 from __future__ import annotations
 
-import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from redis.asyncio import Redis
 from salt.channel.client import ReqChannel  # type: ignore
 from salt.client import LocalClient  # type: ignore
+from salt.exceptions import SaltNoMinionsFound  # type: ignore
+from salt.minion import SaltException  # type: ignore
 from salt.utils.args import condition_input  # type: ignore
 from saltbox_bridge_messages import SaltTgtType
 
-LOGGER = logging.getLogger(__name__)
+from saltbox_bridge.config import logger
+
+T = TypeVar('T')
+
+
+@dataclass
+class JobResult(Generic[T]):
+    value: T | None = None
+    exc: SaltException | None = None
 
 
 class SaltConnector:
+
+    master_uri = 'tcp://localhost:4506'
+
     def __init__(self, salt_opts: dict, redis_client: Redis) -> None:
         self.salt_opts = salt_opts
         self.redis_client = redis_client
@@ -21,11 +34,19 @@ class SaltConnector:
         with Path(self.salt_opts['cachedir']).joinpath('.root_key').open('r') as key_f:
             self.key = key_f.read()
 
-        self.channel = ReqChannel.factory(self.salt_opts, crypt='clear', master_uri='tcp://localhost:4506')
+        self.channel = ReqChannel.factory(
+                self.salt_opts, crypt='clear', master_uri=self.master_uri)
 
-    def create_job_by_zeromq(
-        self, jid: str, tgt: str, tgt_type: SaltTgtType, fun: str, fun_args: list, fun_kwargs: dict
-    ) -> str:
+    async def publish_job_via_zeromq(
+        self,
+        *,
+        jid: str,
+        tgt: str,
+        tgt_type: SaltTgtType,
+        fun: str,
+        fun_args: list[Any],
+        fun_kwargs: dict[Any, Any]
+    ) -> JobResult[str]:
         load: dict[str, str | list | dict] = {
             'cmd': 'publish',
             'user': 'root',
@@ -38,11 +59,24 @@ class SaltConnector:
             'jid': jid,
             'load': {},
         }
+        if tgt_type == 'pillar':
+            target_minions = await self.gather_minions(tgt=tgt, tgt_type=tgt_type)
+            if not target_minions:
+                msg = f'Failed to resolve minions for target: {tgt}'
+                return JobResult(exc=SaltNoMinionsFound(msg))
+
+            load['tgt_type'] = 'list'
+            load['tgt'] = target_minions
 
         ret = self.channel.send(load, timeout=60).get('load', {})
         ret_jid: str = ret.get('jid', '')
+        logger.debug("Job return '%s' from ZeroMQ: %s", ret_jid, ret)
 
-        return ret_jid
+        if not ret_jid:
+            msg = f'Failed to resolve minions for target: {load["tgt"]}'
+            return JobResult(exc=SaltNoMinionsFound(msg))
+
+        return JobResult(value=ret_jid)
 
     @property
     def salt_client(self) -> LocalClient:
@@ -59,7 +93,7 @@ class SaltConnector:
         if not sep:
             return []
 
-        minions = self.salt_client.cmd('*', 'pillar.get', [key])
+        minions: dict | Any = self.salt_client.cmd('*', 'pillar.get', [key])
 
         def matches(value: object) -> bool:
             if isinstance(value, (list, tuple, set)):
