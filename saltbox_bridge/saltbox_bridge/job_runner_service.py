@@ -21,6 +21,7 @@ import logging
 from typing import Any
 
 import salt.config  # type: ignore[import-untyped]
+from salt.exceptions import SaltNoMinionsFound
 
 from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.redis import get_redis_client
@@ -65,20 +66,35 @@ class JobRunner:
 
     async def process(self, job_data: dict[str, Any]) -> None:
         result: JobResult[str] = await self.salt_connector.publish_job_via_zeromq(
-               jid=job_data['jid'],
-               tgt=job_data['tgt'],
-               tgt_type=job_data['tgt_type'],
-               fun=job_data['fun'],
-               fun_args=job_data.get('arg', []) or [],
-               fun_kwargs=job_data.get('kwarg', {}) or {},
+            jid=job_data['jid'],
+            tgt=job_data['tgt'],
+            tgt_type=job_data['tgt_type'],
+            fun=job_data['fun'],
+            fun_args=job_data.get('arg', []) or [],
+            fun_kwargs=job_data.get('kwarg', {}) or {},
         )
-        # TODO: Additional processing is needed
+
         if result.exc:
-            LOGGER.error(str(result.exc))
             job_data.setdefault('retries', 0)
             job_data['retries'] += 1
 
             if job_data['retries'] > SETTINGS.runner_max_retries_to_run_job:
+                error_type: str = 'unknown'
+
+                if isinstance(result.exc, SaltNoMinionsFound):
+                    error_type = 'no_minions_found'
+
+                await self.redis_client.rpush(
+                    f'salt-events:{self.master_id}:to_process',
+                    json.dumps(
+                        {
+                            'master_id': self.master_id,
+                            'tag': f'saltbox/job/{job_data["jid"]}/error',
+                            'data': {'error_type': error_type},
+                        }
+                    ),
+                )
+
                 LOGGER.debug('Job reached max retries, skipping job: %s', job_data)
                 return
 
