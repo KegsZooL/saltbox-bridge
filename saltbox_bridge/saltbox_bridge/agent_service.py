@@ -26,7 +26,7 @@ from faststream import ContextRepo
 from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.event_bus.faststream_redis import get_faststream_app
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
-from saltbox_bridge.event_bus.subscribers import router
+from saltbox_bridge.event_bus.router import router
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.core_connector import CoreConnector
 from saltbox_bridge.utils.salt_caller import SaltCaller

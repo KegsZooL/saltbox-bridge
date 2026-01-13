@@ -21,7 +21,7 @@ import logging
 from typing import Any
 
 import salt.config  # type: ignore[import-untyped]
-from salt.exceptions import SaltNoMinionsFound
+from salt.exceptions import SaltNoMinionsFound  # type: ignore
 
 from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.redis import get_redis_client
