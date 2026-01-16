@@ -51,17 +51,21 @@ apt-get update
 apt-get install --yes gettext git glibc-utils openssh-clients rsync gnupg
 EOF
 ENV PIP_CMD=salt-pip
-# To avoid error messag on cleanup keys
+
+# To avoid error message on cleanup keys
 RUN mkdir --parents /var/cache/salt/master/ /var/lib/saltbox-bridge/
 COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
 COPY --chmod=755 master/gen_gpg.sh /usr/local/bin/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
-COPY master/salt_master_local/ /srv/salt_master_local/
-COPY master/salt_local/ /srv/salt_local/
-COPY engines /srv/salt_extmod/engines/
-COPY runners /srv/salt_extmod/runners/
-COPY pillar /srv/salt_extmod/pillar/
+
+# Copy to staging directories - will be initialized to volumes by entrypoint.sh
+COPY master/salt_master_local/ /opt/saltbox/salt_master_local/
+COPY master/salt_local/ /opt/saltbox/salt_local/
+COPY engines /opt/saltbox/salt_extmod/engines/
+COPY runners /opt/saltbox/salt_extmod/runners/
+COPY pillar /opt/saltbox/salt_extmod/pillar/
+
 ENV REDIS_USERNAME=redis
 ENV REDIS_PASSWORD_FILE=
 ENV SALT_MASTER_LOG_LEVEL=warning
