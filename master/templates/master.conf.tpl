@@ -21,7 +21,7 @@ engines:
   - saltbox_job_runner: {}
 gpg_keydir: '/etc/salt/gpgkeys'
 ext_pillar:
-  - redis_pillar:
+  - core_pillar:
       salt_box_env_file: '/etc/salt/salt_box.d/.env'
   - gpg: {}
 
