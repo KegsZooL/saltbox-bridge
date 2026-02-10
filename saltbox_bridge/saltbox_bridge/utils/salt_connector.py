@@ -24,7 +24,6 @@ class JobResult(Generic[T]):
 
 
 class SaltConnector:
-
     master_uri = 'tcp://localhost:4506'
 
     def __init__(self, salt_opts: dict, redis_client: Redis) -> None:
@@ -34,18 +33,10 @@ class SaltConnector:
         with Path(self.salt_opts['cachedir']).joinpath('.root_key').open('r') as key_f:
             self.key = key_f.read()
 
-        self.channel = ReqChannel.factory(
-                self.salt_opts, crypt='clear', master_uri=self.master_uri)
+        self.channel = ReqChannel.factory(self.salt_opts, crypt='clear', master_uri=self.master_uri)
 
     async def publish_job_via_zeromq(
-        self,
-        *,
-        jid: str,
-        tgt: str,
-        tgt_type: SaltTgtType,
-        fun: str,
-        fun_args: list[Any],
-        fun_kwargs: dict[Any, Any]
+        self, *, jid: str, tgt: str, tgt_type: SaltTgtType, fun: str, fun_args: list[Any], fun_kwargs: dict[Any, Any]
     ) -> JobResult[str]:
         load: dict[str, str | list | dict] = {
             'cmd': 'publish',
@@ -85,7 +76,6 @@ class SaltConnector:
         return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
 
     async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> Any | list[str]:
-
         if tgt_type != 'pillar':
             return self.salt_client.gather_minions(tgt, tgt_type)
 
