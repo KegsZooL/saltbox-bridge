@@ -8,6 +8,10 @@ from typing import Any
 from salt.utils.dictupdate import merge  # type: ignore[import-untyped]
 from saltbox_bridge_messages import BridgePillarDataRequest
 
+from saltbox_bridge.exceptions import (
+    CorePillarError,
+    CorePillarTimeoutError,
+)
 from saltbox_bridge.utils.core_connector import CoreConnector
 
 # stub for static analyzers: __opts__ injected by salt loader at runtime
@@ -58,7 +62,6 @@ async def async_ext_pillar(minion_id: str, pillar: dict, *args: Any, **kwargs: A
     master_id = opts.get('salt_box_master_id')
 
     if not master_id or not isinstance(master_id, str):
-        LOGGER.error('Invalid master_id "%s" in options. Cannot request pillar data.', master_id)
         return result
 
     core_connector = CoreConnector(master_id=master_id)
@@ -69,15 +72,23 @@ async def async_ext_pillar(minion_id: str, pillar: dict, *args: Any, **kwargs: A
             minion_id=minion_id,
             pillarenv=env,
         )
-        response: dict = await core_connector.send_message_and_wait_response(
-            message_tag='get_pillar_data',
-            message=message,
-        )
-        pillars: dict = response.get('data', {})
-        LOGGER.debug('Received pillar data for minion "%s" from env "%s": %s', minion_id, env, pillars)
-        result = merge(result, pillars, strategy, renderer, merge_lists)
+        try:
+            response = await core_connector.send_message_and_wait_response(
+                message_tag='get_pillar_data',
+                message=message,
+            )
+        except TimeoutError:
+            msg = f'Timeout while waiting for pillar data response from Core for minion "{minion_id}" and env "{env}"'
+            LOGGER.error(msg)
+            raise CorePillarTimeoutError(msg) from None
 
-    LOGGER.debug('Final merged pillar data for minion "%s": %s', minion_id, result)
+        error_from_core = response.get('error')
+        if error_from_core:
+            msg = f'Error while retrieving pillar data for "{minion_id}/{master_id}/{env}": {error_from_core}'
+            raise CorePillarError(msg) from None
+
+        pillars: dict = response.get('pillars', {})
+        result = merge(result, pillars, strategy, renderer, merge_lists)
 
     return result
 

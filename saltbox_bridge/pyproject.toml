@@ -128,5 +128,5 @@ show_error_codes = true
 warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
-mypy_path = '../../saltbox-bridge-messages/'
+mypy_path = '../../saltbox-bridge-messages/,../saltbox-bridge-messages/'
 exclude_gitignore = true
