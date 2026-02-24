@@ -25,34 +25,6 @@ fi
 REDIS_PASSWORD="$(cat "$REDIS_PASSWORD_FILE")"
 export REDIS_PASSWORD
 
-# Initialize volumes from built-in defaults if empty
-init_volume_if_empty() {
-  local src_dir="$1"
-  local dst_dir="$2"
-  local marker_flag="${dst_dir}/.saltbox_initialized"
-
-  if [ ! -f "${marker_flag}" ]; then
-    echo "Initializing ${dst_dir} from ${src_dir}"
-
-    mkdir -p "${dst_dir}"
-
-    # Copy only if source exists and destination is empty
-    if [ -d "${src_dir}" ] && [ -z "$(ls -A "${dst_dir}" 2>/dev/null)" ]; then
-      cp -r "${src_dir}"/. "${dst_dir}/"
-      echo "Copied content to ${dst_dir}"
-    fi
-
-    touch "${marker_flag}"
-    echo "Marked ${dst_dir} as initialized"
-  else
-    echo "Volume ${dst_dir} already initialized, skipping"
-  fi
-}
-init_volume_if_empty "/opt/saltbox/salt_extmod" "/srv/salt_extmod"
-init_volume_if_empty "/opt/saltbox/salt_local" "/srv/salt_local"
-init_volume_if_empty "/opt/saltbox/salt_master_local" "/srv/salt_master_local"
-mkdir -p /srv/saltbox_salt
-
 # Generate GPG keys if missing
 /usr/local/bin/gen_gpg.sh
 
