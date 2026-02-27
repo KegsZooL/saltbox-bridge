@@ -1,11 +1,14 @@
 ---
 stages:
+  - .guard
   - lint
   - build
 
 include:
   - project: 'saltbox/ci-lib'
     file: 'build-image.yml'
+  - project: 'saltbox/ci-lib'
+    file: 'def-branch-merge-guard.yml'
 
 
 Build salt-master for tag:
