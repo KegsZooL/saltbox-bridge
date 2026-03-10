@@ -10,6 +10,7 @@ from salt.client import LocalClient  # type: ignore
 from salt.exceptions import SaltNoMinionsFound  # type: ignore
 from salt.minion import SaltException  # type: ignore
 from salt.utils.args import condition_input  # type: ignore
+from salt.utils.minions import CkMinions  # type: ignore
 from saltbox_bridge_messages import SaltTgtType
 
 from saltbox_bridge.config import logger
@@ -75,24 +76,17 @@ class SaltConnector:
         # mopts takes preloaded master options to avoid re-reading configs.
         return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
 
-    async def gather_minions(self, tgt: str, tgt_type: SaltTgtType) -> Any | list[str]:
-        if tgt_type != 'pillar':
-            return self.salt_client.gather_minions(tgt, tgt_type)
-
-        key, sep, expected = tgt.partition(':')
-        if not sep:
-            return []
-
-        minions: dict | Any = self.salt_client.cmd('*', 'pillar.get', [key])
-
-        def matches(value: object) -> bool:
-            if isinstance(value, (list, tuple, set)):
-                return expected in value
-            if isinstance(value, dict):
-                return expected in value or expected in value.values()
-            return str(value) == expected
-
-        return [mid for mid, value in minions.items() if matches(value)]
+    async def gather_minions(self,
+        tgt: str,
+        tgt_type: SaltTgtType,
+        greedy: bool = False
+    ) -> Any | list[str]:
+        result = CkMinions(self.salt_opts).check_minions(
+            tgt,
+            tgt_type=tgt_type,
+            greedy=greedy
+        )
+        return result["minions"]
 
     async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict] | Any:
         return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun='saltutil.refresh_pillar')

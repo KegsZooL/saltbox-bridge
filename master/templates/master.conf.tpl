@@ -15,6 +15,7 @@ log_level: '${SALT_MASTER_LOG_LEVEL}'
 log_level_logfile: 'quiet'
 log_fmt_console: '%(asctime)s %(colorlevel)s %(colorname)s %(colormsg)s'
 presence_events: True
+minion_data_cache: True
 engines:
   - saltbox_delator: {}
   - saltbox_agent: {}
