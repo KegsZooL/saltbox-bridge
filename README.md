@@ -19,6 +19,8 @@ modules.
 - `/srv/salt_extmod/` is for "external modules". There are some distributed
   with this repository. It is possible to put some custom modules here also.
 - `/srv/sshfs/` for files to serve both as `ssh://` and `salt://`.
+- `/srv/migrator/` — directory fo Salt files related to the migration process, accessible
+  via the file manager when `SSHFS_FILE_MANAGER_MIGRATOR_SOURCE_ENABLED` is enabled.
 
 ## Manual installation
 
