@@ -54,7 +54,6 @@ ENV PIP_CMD=salt-pip
 # To avoid error messag on cleanup keys
 RUN mkdir --parents /var/cache/salt/master/ /var/lib/saltbox-bridge/
 COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
-COPY --chmod=755 master/gen_gpg.sh /usr/local/bin/
 COPY master/config/master_id.conf /etc/salt/master.d/
 COPY master/templates/ /root/templates/
 COPY master/salt_master_local/ /srv/salt_master_local/
@@ -73,7 +72,7 @@ EXPOSE 4505 4506
 
 FROM salt-master-base AS salt-master
 LABEL name='saltbox-salt-master'
-LABEL version='4.3'
+LABEL version='4.4'
 LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
@@ -83,7 +82,7 @@ RUN \
 
 FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
-LABEL version='3.1'
+LABEL version='3.2'
 LABEL release='1'
 ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
 COPY saltbox_bridge/ "$SALTBOX_BRIDGE_SRC_PATH"
@@ -98,7 +97,7 @@ ENV SALTBOX_BRIDGE_MESSAGES_SRC_PATH=/mnt/saltbox-bridge-messages/
 
 FROM salt-base AS salt-mock-minion
 LABEL name='saltbox-salt-minion'
-LABEL version='1.1'
+LABEL version='1.2'
 RUN \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
