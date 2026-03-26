@@ -14,7 +14,7 @@ if [ "$SALTBOX_DEV_MODE" = 1 ]; then
   # Update install
   chown -R "$(id -u):$(id -g)" "$SALTBOX_BRIDGE_SRC_PATH"
 
-  # `salt-pip` neets --target='' for editable, but uv does not
+  # `salt-pip` needs --target='' for editable, but uv does not
   python3 -m uv --no-progress pip install --editable "$SALTBOX_BRIDGE_SRC_PATH"
   python3 -m uv --no-progress pip install --editable "$SALTBOX_BRIDGE_MESSAGES_SRC_PATH"
 fi

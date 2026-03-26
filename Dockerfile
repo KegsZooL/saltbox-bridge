@@ -93,6 +93,7 @@ ENV SALTBOX_DEV_MODE=1
 # Respective repository should be mounted
 VOLUME /mnt/saltbox-bridge-messages/
 ENV SALTBOX_BRIDGE_MESSAGES_SRC_PATH=/mnt/saltbox-bridge-messages/
+RUN git config --global --add safe.directory '/mnt/*'
 
 
 FROM salt-base AS salt-mock-minion
