@@ -2,7 +2,7 @@
 dynamic = [ 'dependencies', 'version' ]
 name = 'saltbox-bridge'
 requires-python = '>=3.10'
-license = 'Apache-2.0'
+license = { file = 'LICENSE.txt' }
 description = 'salt.box connector to salt master, service module'
 readme = 'README.md'
 classifiers = [
