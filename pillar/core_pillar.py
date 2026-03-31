@@ -5,7 +5,6 @@ import copy
 import logging
 from typing import Any
 
-from salt.utils.dictupdate import merge  # type: ignore[import-untyped]
 from saltbox_bridge_messages import BridgePillarDataRequest
 
 from saltbox_bridge.exceptions import (
@@ -28,69 +27,42 @@ def __virtual__() -> bool | tuple[bool, str]:  # noqa: N807
 
 
 async def async_ext_pillar(minion_id: str, pillar: dict, *args: Any, **kwargs: Any) -> dict:
-    """
-    Retrieve pillar data for a given minion from the SaltBox core service.
-
-    This function sends a request to the core service to get pillar data for the specified minion and pillar
-    environment(s). It then merges the received pillar data according to the configured merging strategy and
-    returns the final result.
-
-    Args:
-        minion_id (str): The ID of the minion for which to retrieve pillar data.
-        pillar (dict): The existing pillar data (can be used as a base for merging).
-        *args: Additional positional arguments (not used in this implementation).
-        **kwargs: Additional keyword arguments that can include:
-            - pillarenv (str): The pillar environment(s) to use (comma-separated if multiple).
-            - Other options from __opts__ that can influence the behavior of this function.
-    Returns:
-        dict: The merged pillar data for the specified minion and environment(s).
-    """
-
     opts = copy.deepcopy(__opts__)
 
     pillarenv: str = kwargs.get('pillarenv') or opts.get('pillarenv') or 'base'
+    LOGGER.warning('Pillarenv: %s', pillarenv)
 
     if opts.get('pillarenv_from_saltenv', False) and 'saltenv' in opts and pillarenv == 'base':
         pillarenv = opts.get('saltenv', 'base')
 
-    envs = [e.strip() for e in pillarenv.split(',') if e.strip()]
-
-    result: dict = {}
-    strategy = opts.get('pillar_source_merging_strategy', 'smart')
-    renderer = opts.get('renderer', 'yaml')
-    merge_lists = opts.get('pillar_merge_lists', False)
     master_id = opts.get('salt_box_master_id')
 
     if not master_id or not isinstance(master_id, str):
-        return result
+        LOGGER.warning('salt_box_master_id is not set or invalid in __opts__, cannot retrieve pillar data from Core')
+        return {}
 
     core_connector = CoreConnector(master_id=master_id)
 
-    for env in envs:
-        message = BridgePillarDataRequest(
-            master=master_id,
-            minion_id=minion_id,
-            pillarenv=env,
+    message = BridgePillarDataRequest(
+        master=master_id,
+        minion_id=minion_id,
+        pillarenv=pillarenv,
+    )
+    try:
+        response = await core_connector.send_message_and_wait_response(
+            message_tag='get_pillar_data',
+            message=message,
         )
-        try:
-            response = await core_connector.send_message_and_wait_response(
-                message_tag='get_pillar_data',
-                message=message,
-            )
-        except TimeoutError:
-            msg = f'Timeout while waiting for pillar data response from Core for minion "{minion_id}" and env "{env}"'
-            LOGGER.error(msg)
-            raise CorePillarTimeoutError(msg) from None
-
         error_from_core = response.get('error')
         if error_from_core:
-            msg = f'Error while retrieving pillar data for "{minion_id}/{master_id}/{env}": {error_from_core}'
+            msg = f'Error while retrieving pillar data for "{minion_id}/{master_id}/{pillarenv}": {error_from_core}'
             raise CorePillarError(msg) from None
-
         pillars: dict = response.get('pillars', {})
-        result = merge(result, pillars, strategy, renderer, merge_lists)
-
-    return result
+    except TimeoutError:
+        msg = f'Timeout while waiting for pillar data response from Core for minion "{minion_id}" and env "{pillarenv}"'
+        LOGGER.error(msg)
+        raise CorePillarTimeoutError(msg) from None
+    return pillars
 
 
 def ext_pillar(minion_id: str, pillar: dict, *args: Any, **kwargs: Any) -> dict:
