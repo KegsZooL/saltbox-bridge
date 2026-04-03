@@ -1,9 +1,15 @@
-{% set salt_src = pillar.get('salt_conf_source', '/srv/master/salt/') %}
-{% set salt_dst = pillar.get('salt_conf_destination', '/srv/saltbox_salt/') %}
+{#
+
+This file is a part of Salt.Box Bridge component. It is an inner sync state is
+ran by Bridge Agent service.
+
+Pillars are passed by SaltCaller.sync_saltbox(). Some values (BUT NOT ALL)
+respect saltbox.conf.
+
+#}
+
 {%- set ssh_dir = pillar.get('ssh_dir', '/var/lib/saltbox-bridge/ssh/') %}
-
 {% set ssh_conf = ssh_dir + '/ssh.conf' %}
-
 {% macro sync(name, src, dst) -%}
 {{ name }}:
   rsync.synchronized:
@@ -24,7 +30,16 @@ update_ssh_config:
     - makedirs: yes
 
 # Fetch SLS of Config.Boxes
+{% set salt_src = pillar.get('salt_conf_source', '/srv/master/salt/') %}
+{% set salt_dst = pillar.get('salt_conf_destination', '/srv/saltbox_salt/') %}
 {{ sync(name='sync_salt', src='saltbox-salt-conf:' + salt_src, dst=salt_dst) }}
+
+{% if pillar.get('salt_conf_custom_sync_on', True) %}
+# User created files managed with FileBrowser
+{% set custom_src = pillar.get('salt_conf_custom_source', '/srv/master/salt_custom/') %}
+{% set custom_dst = pillar.get('salt_conf_custom_destination', '/srv/salt_custom/') %}
+{{ sync(name='sync_salt_custom', src='saltbox-salt-conf:' + custom_src, dst=custom_dst) }}
+{%- endif %}
 
 {% if pillar.get('sshfs_sync_on', True) %}
 # Extraneous files declared in Manifests of Config Boxes

@@ -2,7 +2,7 @@ module_dirs:
   - /srv/salt_extmod/
 file_roots:
   base:
-    - /srv/salt/
+    - /srv/salt_custom/
     - /srv/salt_local/
     - /srv/saltbox_salt/
     - /srv/sshfs/  # Serve "big" files both with `ssh://` and `salt://`

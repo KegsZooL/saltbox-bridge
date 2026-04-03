@@ -9,8 +9,8 @@ Currently supported salt-master versions:
 
 ## Salt files hierarhy
 
-- `/srv/salt/` — standard directory for user's custom files. In Salt.Box Compose
-  it is mounted to a local dir.
+- `/srv/salt_custom/` is for user's custom files managed with Salt.Box File
+  Browser.
 - `/srv/saltbox_salt/` is a part of Salt.Box system to replicate states from
 packages.
 - `/srv/salt_local/` is for local Salt.Box states and modules.

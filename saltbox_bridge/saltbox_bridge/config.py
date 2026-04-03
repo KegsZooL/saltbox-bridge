@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     salt_conf_user: str = 'master'
     salt_conf_source: Path = Path('/srv/master/salt/')
     salt_conf_destination: Path = Path('/srv/saltbox_salt/')
+    salt_conf_custom_sync_on: bool = True
 
     # SSHFS replication
     sshfs_sync_on: bool = True

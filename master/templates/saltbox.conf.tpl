@@ -12,9 +12,10 @@ expire: 604800
 
 salt_conf_server: 'sshfs'
 salt_conf_port: 1022
+salt_conf_custom_sync_on: false  # Out-the-box Master has these files locally
 
 sshfs_server: 'sshfs'
 sshfs_port: 1022
-sshfs_sync_on: false
+sshfs_sync_on: false  # Out-the-box Master has these files locally
 
 # vi: ft=yaml
