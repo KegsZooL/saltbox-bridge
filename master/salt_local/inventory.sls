@@ -12,7 +12,7 @@
     'Astra*': 'Debian',
     'RED*':   'RedHat'
   },
-  grain='os_family'
+  grain='lsb_distrib_id'
 ) %}
 
 {% if os_family %}
