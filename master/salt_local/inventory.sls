@@ -18,6 +18,7 @@
 {% if os_family %}
 OS family is set:
   grains.present:
+    - name: os_family
     - value: {{ os_family }}
 {% endif %}
 
