@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import copy
 import logging
 from typing import Any
-
-from saltbox_bridge_messages import BridgePillarDataRequest
 
 from saltbox_bridge.exceptions import (
     CorePillarError,
     CorePillarTimeoutError,
 )
 from saltbox_bridge.utils.core_connector import CoreConnector
+from saltbox_bridge_messages import BridgePillarDataRequest
 
 # stub for static analyzers: __opts__ injected by salt loader at runtime
 __opts__: dict[str, Any] = {}
@@ -66,4 +66,8 @@ async def async_ext_pillar(minion_id: str, pillar: dict, *args: Any, **kwargs: A
 
 
 def ext_pillar(minion_id: str, pillar: dict, *args: Any, **kwargs: Any) -> dict:
-    return asyncio.run(async_ext_pillar(minion_id, pillar, *args, **kwargs))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(
+            asyncio.run, async_ext_pillar(minion_id, pillar, *args, **kwargs)
+        )
+        return future.result()
