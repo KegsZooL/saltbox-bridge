@@ -5,7 +5,7 @@ Bridge component is a set of additional SaltStack modules to connect Salt
 master to Salt.Box.
 
 Currently supported salt-master versions:
-- 3006.9
+- 3007.13
 
 ## Salt files hierarhy
 

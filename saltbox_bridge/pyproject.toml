@@ -22,7 +22,7 @@ dev = [
   'types-redis',
 ]
 salt = [
-   'salt==3006.9',
+   'salt==3007.13',
 ]
 
 [build-system]
