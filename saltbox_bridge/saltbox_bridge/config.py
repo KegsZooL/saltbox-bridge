@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     expire: int | None = 604800
     max_count_of_gather_minions: int = 100
     faststream_app_sleep_time: float = 0.001
+    delator_wait_time: int = 5
+    runner_wait_time: int = 5
     runner_sleep_timeout: float = 0.0000001
     runner_batch_size: int = 100
     runner_max_retries_to_run_job: int = 10

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from redis import exceptions as redis_exceptions
 from salt.utils.event import get_master_event  # type: ignore[import-untyped]
 
-from saltbox_bridge.config import configure_logging
+from saltbox_bridge.config import SETTINGS, configure_logging
 from saltbox_bridge.redis import get_redis_client
 from saltbox_bridge.utils.core_connector import CoreConnector
 
@@ -43,13 +43,21 @@ class SaltBridge:
         self.master_id: str = self.salt_opts['salt_box_master_id']
         self.core_connector = CoreConnector(master_id=self.master_id)
         self.local_buffer: list[dict] = []
+        self.background_tasks: set[asyncio.Task] = set()
 
     async def start(self) -> None:
         await self.core_connector.wait_success_connection()
 
         with get_master_event(self.salt_opts, self.salt_opts['sock_dir'], listen=True) as event_bus:
             while True:
-                await self.process(event_bus.get_event(full=True, no_block=True))
+                event = await asyncio.get_event_loop().run_in_executor(
+                    event_bus.io_loop,
+                    lambda: event_bus.get_event(full=True, no_block=False, wait=SETTINGS.delator_wait_time),
+                )
+
+                task = asyncio.create_task(self.process(event))
+                self.background_tasks.add(task)
+                task.add_done_callback(self.background_tasks.discard)
 
     async def _send_from_local_buffer(self) -> None:
         for event in self.local_buffer:

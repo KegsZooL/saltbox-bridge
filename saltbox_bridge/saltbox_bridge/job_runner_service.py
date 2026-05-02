@@ -50,19 +50,27 @@ class JobRunner:
         await self.core_connector.wait_success_connection()
 
         while True:
-            jobs_data: list[bytes] | None = await self.redis_client.lpop(
-                self.jobs_to_create_list_name, SETTINGS.runner_batch_size
-            )
+            jobs_data: list[bytes] = []
+            first_job = await self.redis_client.blpop(self.jobs_to_create_list_name, timeout=SETTINGS.runner_wait_time)
 
-            if not jobs_data:
+            if not first_job:
                 continue
+
+            _, first_payload = first_job
+            jobs_data.append(first_payload)
+
+            if SETTINGS.runner_batch_size > 1:
+                extra_jobs: list[bytes] | None = await self.redis_client.lpop(
+                    self.jobs_to_create_list_name, SETTINGS.runner_batch_size - 1
+                )
+
+                if extra_jobs:
+                    jobs_data.extend(extra_jobs)
 
             for job_data in jobs_data:
                 task = asyncio.create_task(self.process(json.loads(job_data.decode())))
                 self.background_tasks.add(task)
                 task.add_done_callback(self.background_tasks.discard)
-
-            await asyncio.sleep(SETTINGS.runner_sleep_timeout)
 
     async def process(self, job_data: dict[str, Any]) -> None:
         result: JobResult[str] = await self.salt_connector.publish_job_via_zeromq(
