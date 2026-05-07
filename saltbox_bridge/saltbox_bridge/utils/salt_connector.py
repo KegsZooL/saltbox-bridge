@@ -24,16 +24,16 @@ class JobResult(Generic[T]):
 
 
 class SaltConnector:
-    
+
     CHANNEL_TIMEOUT = time(second=59)
-    
+
     def __init__(self, salt_opts: dict, redis_client: Redis) -> None:
         self.salt_opts = salt_opts
         self.redis_client = redis_client
 
         with Path(self.salt_opts['cachedir']).joinpath('.root_key').open('r') as key_f:
             self.key = key_f.read()
-        
+
         self.master_port = salt_opts.get('ret_port', '4506')
         self.master_uri = f'tcp://localhost:{self.master_port}'
         self.channel = ReqChannel.factory(
