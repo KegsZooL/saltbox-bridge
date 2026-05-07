@@ -9,13 +9,15 @@ from saltbox_bridge.event_bus.subscribers.pillar_subscribers import router_not_a
 from saltbox_bridge.event_bus.subscribers.system_subscribers import router as system_router
 from saltbox_bridge.event_bus.subscribers.system_subscribers import router_not_auth as system_router_not_auth
 
-router = RedisRouter(prefix='master_')
 
-router.include_routers(
-    minion_router,
-    minion_router_not_auth,
-    pillar_router,
-    pillar_router_not_auth,
-    system_router,
-    system_router_not_auth,
-)
+def build_router(master_id: str) -> RedisRouter:
+    router = RedisRouter(prefix=f'master_{master_id}_')
+    router.include_routers(
+        minion_router,
+        minion_router_not_auth,
+        pillar_router,
+        pillar_router_not_auth,
+        system_router,
+        system_router_not_auth,
+    )
+    return router

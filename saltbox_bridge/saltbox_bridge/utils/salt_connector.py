@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import time
 from pathlib import Path
 from typing import Any, Generic, TypeVar
 
@@ -23,16 +24,23 @@ class JobResult(Generic[T]):
 
 
 class SaltConnector:
-    master_uri = 'tcp://localhost:4506'
-
+    
+    CHANNEL_TIMEOUT = time(second=59)
+    
     def __init__(self, salt_opts: dict, redis_client: Redis) -> None:
         self.salt_opts = salt_opts
         self.redis_client = redis_client
 
         with Path(self.salt_opts['cachedir']).joinpath('.root_key').open('r') as key_f:
             self.key = key_f.read()
-
-        self.channel = ReqChannel.factory(self.salt_opts, crypt='clear', master_uri=self.master_uri)
+        
+        self.master_port = salt_opts.get('ret_port', '4506')
+        self.master_uri = f'tcp://localhost:{self.master_port}'
+        self.channel = ReqChannel.factory(
+            self.salt_opts,
+            crypt='clear',
+            master_uri=self.master_uri
+        )
 
     async def publish_job_via_zeromq(
         self, *, jid: str, tgt: str, tgt_type: SaltTgtType, fun: str, fun_args: list[Any], fun_kwargs: dict[Any, Any]
@@ -58,9 +66,9 @@ class SaltConnector:
             load['tgt_type'] = 'list'
             load['tgt'] = target_minions
 
-        ret = self.channel.send(load, timeout=60).get('load', {})
+        raw_ret = self.channel.send(load, timeout=self.CHANNEL_TIMEOUT.second)
+        ret = raw_ret.get('load', {})
         ret_jid: str = ret.get('jid', '')
-
         if not ret_jid:
             msg = f'Failed to resolve minions for target: {load["tgt"]}'
             return JobResult(exc=SaltNoMinionsFound(msg))
@@ -74,8 +82,13 @@ class SaltConnector:
         return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
 
     async def gather_minions(self, tgt: str, tgt_type: SaltTgtType, greedy: bool = False) -> Any | list[str]:
-        result = CkMinions(self.salt_opts).check_minions(tgt, tgt_type=tgt_type, greedy=greedy)
+        result = CkMinions(self.salt_opts).check_minions(
+            tgt,
+            tgt_type=tgt_type,
+            greedy=greedy
+        )
         return result['minions']
 
     async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict] | Any:
-        return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun='saltutil.refresh_pillar')
+        salt_fun_definition = 'saltutil.refresh_pillar'
+        return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun=salt_fun_definition)
