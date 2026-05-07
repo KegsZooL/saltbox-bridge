@@ -34,10 +34,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class SaltBridge:
-    def __init__(
-        self,
-        salt_opts: dict,
-    ) -> None:
+    def __init__(self, salt_opts: dict) -> None:
         self.redis_client = get_redis_client()
         self.salt_opts = salt_opts
         self.master_id: str = self.salt_opts['salt_box_master_id']
@@ -54,6 +51,9 @@ class SaltBridge:
                     event_bus.io_loop,
                     lambda: event_bus.get_event(full=True, no_block=False, wait=SETTINGS.delator_wait_time),
                 )
+
+                if not event:
+                    continue
 
                 task = asyncio.create_task(self.process(event))
                 self.background_tasks.add(task)
@@ -73,10 +73,7 @@ class SaltBridge:
             LOGGER.exception('Redis error')
             self.local_buffer.append({'tag': tag, 'data': data})
 
-    async def process(self, event: dict | None) -> None:
-        if not event:
-            return
-
+    async def process(self, event: dict) -> None:
         tag = event['tag']
         data = event['data']
 

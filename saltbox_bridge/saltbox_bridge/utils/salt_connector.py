@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 from salt.channel.client import ReqChannel  # type: ignore
 from salt.client import LocalClient  # type: ignore
 from salt.exceptions import SaltNoMinionsFound  # type: ignore
+from salt.key import Key  # type: ignore
 from salt.minion import SaltException  # type: ignore
 from salt.utils.args import condition_input  # type: ignore
 from salt.utils.minions import CkMinions  # type: ignore
@@ -24,7 +25,6 @@ class JobResult(Generic[T]):
 
 
 class SaltConnector:
-
     CHANNEL_TIMEOUT = time(second=59)
 
     def __init__(self, salt_opts: dict, redis_client: Redis) -> None:
@@ -36,11 +36,7 @@ class SaltConnector:
 
         self.master_port = salt_opts.get('ret_port', '4506')
         self.master_uri = f'tcp://localhost:{self.master_port}'
-        self.channel = ReqChannel.factory(
-            self.salt_opts,
-            crypt='clear',
-            master_uri=self.master_uri
-        )
+        self.channel = ReqChannel.factory(self.salt_opts, crypt='clear', master_uri=self.master_uri)
 
     async def publish_job_via_zeromq(
         self, *, jid: str, tgt: str, tgt_type: SaltTgtType, fun: str, fun_args: list[Any], fun_kwargs: dict[Any, Any]
@@ -81,14 +77,47 @@ class SaltConnector:
         # mopts takes preloaded master options to avoid re-reading configs.
         return LocalClient(c_path=None, mopts=self.salt_opts, auto_reconnect=True)
 
+    @property
+    def salt_key_manager(self) -> Key:
+        return Key(self.salt_opts)
+
     async def gather_minions(self, tgt: str, tgt_type: SaltTgtType, greedy: bool = False) -> Any | list[str]:
-        result = CkMinions(self.salt_opts).check_minions(
-            tgt,
-            tgt_type=tgt_type,
-            greedy=greedy
-        )
+        result = CkMinions(self.salt_opts).check_minions(tgt, tgt_type=tgt_type, greedy=greedy)
         return result['minions']
 
     async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict] | Any:
-        salt_fun_definition = 'saltutil.refresh_pillar'
-        return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun=salt_fun_definition)
+        return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun='saltutil.refresh_pillar')
+
+    async def salt_key_accept(self, minions_ids: list[str]) -> list[str]:
+        raw_result = self.salt_key_manager.accept(
+            match=','.join(minions_ids), include_denied=True, include_rejected=True
+        )
+
+        return raw_result['minions']  # type: ignore
+
+    async def salt_key_all_accept(self) -> list[str]:
+        raw_result = self.salt_key_manager.accept_all()
+
+        return raw_result['minions']  # type: ignore
+
+    async def salt_key_reject(self, minions_ids: list[str]) -> list[str]:
+        raw_result = self.salt_key_manager.reject(
+            match=','.join(minions_ids), include_denied=True, include_accepted=True
+        )
+
+        return raw_result['minions']  # type: ignore
+
+    async def salt_key_all_reject(self) -> list[str]:
+        raw_result = self.salt_key_manager.reject_all()
+
+        return raw_result['minions']  # type: ignore
+
+    async def salt_key_delete(self, minions_ids: list[str]) -> list[str]:
+        raw_result = self.salt_key_manager.delete_key(match=','.join(minions_ids))
+
+        return raw_result['minions']  # type: ignore
+
+    async def salt_key_all_delete(self) -> list[str]:
+        raw_result = self.salt_key_manager.delete_all()
+
+        return raw_result['minions']  # type: ignore
