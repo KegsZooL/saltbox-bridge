@@ -6,7 +6,14 @@ from typing import Annotated
 from faststream import Context
 from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
-from saltbox_bridge_messages import CoreMessageBase, SaltKeysRequest, SaltKeysResponse
+from saltbox_bridge_messages import (
+    BridgeMessageBase,
+    CoreMessageBase,
+    SaltKeysRequest,
+    SaltKeysResponse,
+    SaltListKeysRequest,
+    SaltListKeysResponse,
+)
 
 from saltbox_bridge.event_bus.middlewares import MastersAuthMiddleware
 from saltbox_bridge.utils.salt_connector import SaltConnector
@@ -88,15 +95,10 @@ async def delete_keys(
     message: SaltKeysRequest,
     salt_master: str = Context(),
     salt_connector: SaltConnector = Context(),  # noqa: B008
-) -> SaltKeysResponse:
-    minions: list[str] = await salt_connector.salt_key_delete(minions_ids=message.minions)
+) -> BridgeMessageBase:
+    await salt_connector.salt_key_delete(minions_ids=message.minions)
 
-    result = SaltKeysResponse(
-        minions=minions,
-        master=salt_master,
-    )
-
-    return result
+    return BridgeMessageBase(master=salt_master)
 
 
 @router.subscriber('delete_all_keys')
@@ -104,11 +106,22 @@ async def delete_all_keys(
     message: CoreMessageBase,
     salt_master: str = Context(),
     salt_connector: SaltConnector = Context(),  # noqa: B008
-) -> SaltKeysResponse:
-    minions: list[str] = await salt_connector.salt_key_all_delete()
+) -> BridgeMessageBase:
+    await salt_connector.salt_key_all_delete()
 
-    result = SaltKeysResponse(
-        minions=minions,
+    return BridgeMessageBase(master=salt_master)
+
+
+@router.subscriber('list_keys')
+async def list_keys(
+    message: SaltListKeysRequest,
+    salt_master: str = Context(),
+    salt_connector: SaltConnector = Context(),  # noqa: B008
+) -> SaltListKeysResponse:
+    salt_keys: dict = await salt_connector.get_salt_keys_list(status=message.status)
+
+    result = SaltListKeysResponse(
+        salt_keys=salt_keys,
         master=salt_master,
     )
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import time
 from pathlib import Path
@@ -13,9 +14,24 @@ from salt.key import Key  # type: ignore
 from salt.minion import SaltException  # type: ignore
 from salt.utils.args import condition_input  # type: ignore
 from salt.utils.minions import CkMinions  # type: ignore
-from saltbox_bridge_messages import SaltTgtType
+from saltbox_bridge_messages import SaltKeyStatusType, SaltTgtType
+
+LOGGER = logging.getLogger(__name__)
+
 
 T = TypeVar('T')
+
+SALT_KEY_ACCEPTED = 'minions'
+SALT_KEY_UNACCEPTED = 'minions_pre'
+SALT_KEY_REJECTED = 'minions_rejected'
+SALT_KET_DENIED = 'minions_denied'
+
+SALT_KEY_TYPES_MAP = {
+    SaltKeyStatusType.accepted: SALT_KEY_ACCEPTED,
+    SaltKeyStatusType.unaccepted: SALT_KEY_UNACCEPTED,
+    SaltKeyStatusType.rejected: SALT_KEY_REJECTED,
+    SaltKeyStatusType.denied: SALT_KET_DENIED,
+}
 
 
 @dataclass
@@ -83,41 +99,49 @@ class SaltConnector:
 
     async def gather_minions(self, tgt: str, tgt_type: SaltTgtType, greedy: bool = False) -> Any | list[str]:
         result = CkMinions(self.salt_opts).check_minions(tgt, tgt_type=tgt_type, greedy=greedy)
-        return result['minions']
+        return result.get('minions', [])
 
     async def update_pillar_cache(self, tgt: str, tgt_type: SaltTgtType) -> dict[str, dict] | Any:
         return self.salt_client.cmd(tgt=tgt, tgt_type=tgt_type, fun='saltutil.refresh_pillar')
 
     async def salt_key_accept(self, minions_ids: list[str]) -> list[str]:
-        raw_result = self.salt_key_manager.accept(
+        raw_result: dict[str, list[str]] = self.salt_key_manager.accept(
             match=','.join(minions_ids), include_denied=True, include_rejected=True
         )
 
-        return raw_result['minions']  # type: ignore
+        return raw_result.get(SALT_KEY_ACCEPTED, [])
 
     async def salt_key_all_accept(self) -> list[str]:
-        raw_result = self.salt_key_manager.accept_all()
+        raw_result: dict[str, list[str]] = self.salt_key_manager.accept_all()
 
-        return raw_result['minions']  # type: ignore
+        return raw_result.get(SALT_KEY_ACCEPTED, [])
 
     async def salt_key_reject(self, minions_ids: list[str]) -> list[str]:
-        raw_result = self.salt_key_manager.reject(
+        raw_result: dict[str, list[str]] = self.salt_key_manager.reject(
             match=','.join(minions_ids), include_denied=True, include_accepted=True
         )
 
-        return raw_result['minions']  # type: ignore
+        return raw_result.get(SALT_KEY_REJECTED, [])
 
     async def salt_key_all_reject(self) -> list[str]:
-        raw_result = self.salt_key_manager.reject_all()
+        raw_result: dict[str, list[str]] = self.salt_key_manager.reject_all()
 
-        return raw_result['minions']  # type: ignore
+        return raw_result.get(SALT_KEY_REJECTED, [])
 
-    async def salt_key_delete(self, minions_ids: list[str]) -> list[str]:
-        raw_result = self.salt_key_manager.delete_key(match=','.join(minions_ids))
+    async def salt_key_delete(self, minions_ids: list[str]) -> None:
+        self.salt_key_manager.delete_key(match=','.join(minions_ids))
 
-        return raw_result['minions']  # type: ignore
+    async def salt_key_all_delete(self) -> None:
+        self.salt_key_manager.delete_all()
 
-    async def salt_key_all_delete(self) -> list[str]:
-        raw_result = self.salt_key_manager.delete_all()
+    async def get_salt_keys_list(self, status: SaltKeyStatusType | None = None) -> dict[SaltKeyStatusType, list[str]]:
+        raw_result: dict[str, list[str]] = self.salt_key_manager.list_keys()
+        salt_keys: dict[SaltKeyStatusType, list[str]] = {}
 
-        return raw_result['minions']  # type: ignore
+        if status is None:
+            for key_type, raw_type in SALT_KEY_TYPES_MAP.items():
+                salt_keys[key_type] = raw_result.get(raw_type, [])
+        else:
+            salt_keys[status] = raw_result.get(SALT_KEY_TYPES_MAP[status], [])
+
+        return salt_keys
