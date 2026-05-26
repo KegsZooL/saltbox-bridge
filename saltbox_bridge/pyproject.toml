@@ -18,7 +18,7 @@ Repository = 'https://dev.saltbox.pro/salt.box'
 dev = [
   'mypy>=1.15.0',
   'pre-commit>=4.2.0',
-  'ruff',
+  'ruff==0.15.13',
   'types-redis',
 ]
 salt = [
