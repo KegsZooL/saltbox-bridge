@@ -8,6 +8,7 @@ from faststream.redis import RedisRouter
 from faststream.redis.message import RedisMessage
 from redis.asyncio import Redis
 from saltbox_bridge_messages import (
+    BridgeSyncDoneMessage,
     BridgeTestBurstLoadMessage,
     BridgeTestBurstResponse,
     BurstJobsTestReportSchema,
@@ -37,6 +38,14 @@ async def sync_saltbox(
     salt_caller: SaltCaller = Context(),  # noqa: B008
 ) -> None:
     await salt_caller.sync_saltbox()
+
+
+@router.subscriber('sync_templates')
+async def sync_templates(
+    message: CoreEmptyMessage,
+    salt_caller: SaltCaller = Context(),  # noqa: B008
+) -> BridgeSyncDoneMessage:
+    return await salt_caller.sync_templates()
 
 
 @router.subscriber('burst_test')

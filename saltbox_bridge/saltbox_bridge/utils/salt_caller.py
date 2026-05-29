@@ -77,6 +77,35 @@ class SaltCaller:
         )
         await self.core_connector.send_messagee(message=notification, message_tag='sync_saltbox_done')
 
+    async def sync_templates(self) -> BridgeSyncDoneMessage:
+        """Temporary implementation of templates sync for new module realization"""
+        state_name = 'sync_saltbox'
+        logger.info('Starting %s', state_name)
+        pillar = {
+            'ssh_dir': str(HIERARHY.ssh_dir),
+            'sshfs_sync_on': SETTINGS.sshfs_sync_on,
+            'sshfs_server': SETTINGS.sshfs_server,
+            'sshfs_port': SETTINGS.sshfs_port,
+            'sshfs_user': SETTINGS.sshfs_user,
+            'sshfs_privkey': str(HIERARHY.sshfs_privkey),
+            'sshfs_pubkey': str(HIERARHY.sshfs_pubkey),
+            'salt_conf_server': SETTINGS.salt_conf_server,
+            'salt_conf_port': SETTINGS.salt_conf_port,
+            'salt_conf_user': SETTINGS.salt_conf_user,
+            'salt_conf_privkey': str(HIERARHY.salt_conf_privkey),
+            'salt_conf_pubkey': str(HIERARHY.salt_conf_pubkey),
+        }
+        ret = self.caller.cmd('state.apply', state_name, pillar=pillar)
+        logger.info('Finished %s', state_name)
+        if (errors := get_state_apply_error(ret)) is not None:
+            for msg in errors:
+                logger.error(msg)
+        return BridgeSyncDoneMessage(
+            master=self.core_connector.master_id,
+            status=MasterSyncStatus.SUCCEED if not errors else MasterSyncStatus.ERROR,
+            time=utc_now(),
+        )
+
     def encrypt_data(
         self,
         text: str,
