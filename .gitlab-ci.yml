@@ -6,26 +6,33 @@ include:
   - project: 'saltbox/ci-lib'
     file: 'def-branch-merge-guard.yml'
 
+
 .lint-job:
   stage: test
   variables:
     PIP_CACHE_DIR: '$CI_PROJECT_DIR/.cache/pip'
+    APK_CACHE_DIR: '$CI_PROJECT_DIR/.cache/apk'
   image: python:3.10-alpine
   before_script:
-    - apk add git
+    - mkdir -p "$APK_CACHE_DIR"
+    - apk add --cache-dir "$APK_CACHE_DIR" git
     - pip3 install -e ./saltbox_bridge[dev,salt]
     - python -V
   cache:
     paths:
-      - '.cache/pip/'
+      - '$PIP_CACHE_DIR'
+      - '$APK_CACHE_DIR'
+
 
 Ruff:
   extends: .lint-job
   script: 'ruff check saltbox_bridge --config ./saltbox_bridge/pyproject.toml'
 
+
 Mypy:
   extends: .lint-job
   script: 'mypy saltbox_bridge --config-file ./saltbox_bridge/pyproject.toml'
+
 
 Build salt-master for tag:
   stage: deploy
@@ -36,6 +43,7 @@ Build salt-master for tag:
     REGISTRY_ADDITIONAL_PATH: '/salt-master'
   rules:
     - if: '$CI_COMMIT_TAG'
+
 
 Build salt-master image for branch:
   stage: deploy
