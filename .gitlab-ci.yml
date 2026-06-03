@@ -1,14 +1,25 @@
 ---
 
+variables:
+  CONFIG_FILE_PATH: './saltbox_bridge/pyproject.toml'
+
+stages:
+  - lint
+  - bump-version
+  - build
+
+
 include:
   - project: 'saltbox/ci-lib'
     file: 'build-image.yml'
   - project: 'saltbox/ci-lib'
     file: 'def-branch-merge-guard.yml'
+  - project: 'saltbox/ci-lib'
+    file: 'set-version.yml'
 
 
 .lint-job:
-  stage: test
+  stage: lint
   variables:
     PIP_CACHE_DIR: '$CI_PROJECT_DIR/.cache/pip'
     APK_CACHE_DIR: '$CI_PROJECT_DIR/.cache/apk'
@@ -26,31 +37,24 @@ include:
 
 Ruff:
   extends: .lint-job
-  script: 'ruff check saltbox_bridge --config ./saltbox_bridge/pyproject.toml'
+  script: 'ruff check saltbox_bridge --config $CONFIG_FILE_PATH'
 
 
 Mypy:
   extends: .lint-job
-  script: 'mypy saltbox_bridge --config-file ./saltbox_bridge/pyproject.toml'
+  script: 'mypy saltbox_bridge --config-file $CONFIG_FILE_PATH'
 
 
-Build salt-master for tag:
-  stage: deploy
+Bump Salt Master version:
+  stage: bump-version
+  extends: .set-backend-version
+  variables:
+    INNER_VERSION_FILE: 'saltbox_bridge/saltbox_bridge/__init__.py'
+
+
+Build Salt Master image:
+  stage: build
   extends: .build-image
   variables:
-    IMAGE_TAG: '$CI_COMMIT_TAG'
     TARGET: salt-master
     REGISTRY_ADDITIONAL_PATH: '/salt-master'
-  rules:
-    - if: '$CI_COMMIT_TAG'
-
-
-Build salt-master image for branch:
-  stage: deploy
-  extends: .build-image
-  variables:
-    IMAGE_TAG: '$CI_COMMIT_BRANCH'
-    TARGET: salt-master
-    REGISTRY_ADDITIONAL_PATH: '/salt-master'
-  rules:
-    - if: '$CI_COMMIT_BRANCH'
