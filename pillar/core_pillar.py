@@ -6,13 +6,12 @@ import copy
 import logging
 from typing import Any
 
-from saltbox_bridge_messages import BridgePillarDataRequest
-
 from saltbox_bridge.exceptions import (
     CorePillarError,
     CorePillarTimeoutError,
 )
 from saltbox_bridge.utils.core_connector import CoreConnector
+from saltbox_bridge_messages import BridgePillarDataRequest
 
 # stub for static analyzers: __opts__ injected by salt loader at runtime
 __opts__: dict[str, Any] = {}
@@ -21,7 +20,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def __virtual__() -> bool | tuple[bool, str]:  # noqa: N807
-    LOGGER.warning('Checking if core_pillar module can be loaded...')
+    LOGGER.info('Checking if core_pillar module can be loaded...')
     if __opts__['__role'] != 'master':
         return False, f'{__name__} runs on master only'
     return True
@@ -31,7 +30,7 @@ async def async_ext_pillar(minion_id: str, pillar: dict, *args: Any, **kwargs: A
     opts = copy.deepcopy(__opts__)
 
     pillarenv: str = kwargs.get('pillarenv') or opts.get('pillarenv') or 'base'
-    LOGGER.warning('Pillarenv: %s', pillarenv)
+    LOGGER.info('Pillarenv: %s', pillarenv)
 
     if opts.get('pillarenv_from_saltenv', False) and 'saltenv' in opts and pillarenv == 'base':
         pillarenv = opts.get('saltenv', 'base')
