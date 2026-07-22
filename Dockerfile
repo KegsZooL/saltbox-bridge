@@ -54,13 +54,13 @@ ENV PIP_CMD=salt-pip
 # To avoid error messag on cleanup keys
 RUN mkdir --parents /var/cache/salt/master/ /var/lib/saltbox-bridge/
 COPY --chmod=755 master/entrypoint.sh /usr/local/bin/
-COPY master/config/master_id.conf /etc/salt/master.d/
-COPY master/templates/ /root/templates/
-COPY master/salt_master_local/ /srv/salt_master_local/
-COPY master/salt_local/ /srv/salt_local/
-COPY engines /srv/salt_extmod/engines/
-COPY runners /srv/salt_extmod/runners/
-COPY pillar /srv/salt_extmod/pillar/
+COPY --chmod=644 master/config/master_id.conf /etc/salt/master.d/
+COPY --chmod=u=rwX,go=rX master/templates/ /root/templates/
+COPY --chmod=u=rwX,go=rX master/salt_master_local/ /srv/salt_master_local/
+COPY --chmod=u=rwX,go=rX master/salt_local/ /srv/salt_local/
+COPY --chmod=u=rwX,go=rX engines /srv/salt_extmod/engines/
+COPY --chmod=u=rwX,go=rX runners /srv/salt_extmod/runners/
+COPY --chmod=u=rwX,go=rX pillar /srv/salt_extmod/pillar/
 ENV REDIS_USERNAME=redis
 ENV REDIS_PASSWORD_FILE=
 ENV SALT_MASTER_LOG_LEVEL=warning
