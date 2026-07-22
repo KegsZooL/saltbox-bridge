@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # check=skip=SecretsUsedInArgOrEnv
 
 # Copyright 2025 Anton Karmanov
@@ -72,7 +73,7 @@ EXPOSE 4505 4506
 
 FROM salt-master-base AS salt-master
 LABEL name='saltbox-salt-master'
-LABEL version='4.4'
+LABEL version='4.5'
 LABEL release='1'
 RUN \
   --mount=type=bind,target=/mnt/,readwrite \
@@ -82,7 +83,7 @@ RUN \
 
 FROM salt-master-base AS salt-master-dev
 LABEL name='saltbox-salt-master-dev'
-LABEL version='3.2'
+LABEL version='3.3'
 LABEL release='1'
 ENV SALTBOX_BRIDGE_SRC_PATH=/root/saltbox_bridge/
 COPY saltbox_bridge/ "$SALTBOX_BRIDGE_SRC_PATH"
