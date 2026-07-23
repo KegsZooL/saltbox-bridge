@@ -106,6 +106,19 @@ class SaltCaller:
             time=utc_now(),
         )
 
+    async def ping(self) -> BridgeSyncDoneMessage:
+        """Temporary implementation of ping"""
+        logger.info('Ping')
+
+        ret = self.caller.cmd('cmd.run', 'echo "pong"')
+        logger.info('Pong is: %s', ret)
+        msg = ret if ret == 'pong' else 'not pong'
+        return BridgeSyncDoneMessage(
+            master=self.core_connector.master_id,
+            status=MasterSyncStatus.SUCCEED if msg == 'pong' else MasterSyncStatus.ERROR,
+            time=utc_now(),
+        )
+
     def encrypt_data(
         self,
         text: str,

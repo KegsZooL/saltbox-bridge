@@ -92,3 +92,12 @@ async def burst_jobs_test(
                 BURST_JOBS_TEST_REPORT_HASH_NAME, SETTINGS.expire, message.id
             )
         await pipe.execute()
+
+
+@router.subscriber('ping')
+async def ping(
+    message: CoreEmptyMessage,
+    salt_caller: SaltCaller = Context(),  # noqa: B008
+) -> BridgeSyncDoneMessage:
+    logger.debug('Received ping message from master %s', message.master)
+    return await salt_caller.ping()
