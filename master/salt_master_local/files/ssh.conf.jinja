@@ -1,19 +1,19 @@
 {%- set ssh_dir = pillar.get('ssh_dir', '/var/lib/saltbox-bridge/ssh/') %}
 {%- set known_hosts = ssh_dir + '/known_hosts' %}
 Host saltbox-salt-conf
-  User '{{ pillar.get('salt_conf_user', 'master') }}'
-  Hostname '{{ pillar.get('salt_conf_server', 'sshfs') }}'
+  User {{ pillar.get('salt_conf_user', 'master') }}
+  Hostname {{ pillar.get('salt_conf_server', 'sshfs') }}
   PasswordAuthentication no
   StrictHostKeyChecking no
   Port {{ pillar.get('salt_conf_port', 1022) }}
-  IdentityFile '{{ pillar.get('salt_conf_privkey', ssh_dir + '/salt_conf_ed25519') }}'
-  UserKnownHostsFile '{{ known_hosts }}'
+  IdentityFile {{ pillar.get('salt_conf_privkey', ssh_dir + '/salt_conf_ed25519') }}
+  UserKnownHostsFile {{ known_hosts }}
 
 Host saltbox-sshfs
-  User '{{ pillar.get('sshfs_user', 'saltbox') }}'
-  Hostname '{{ pillar.get('sshfs_server', 'sshfs') }}'
+  User {{ pillar.get('sshfs_user', 'saltbox') }}
+  Hostname {{ pillar.get('sshfs_server', 'sshfs') }}
   PasswordAuthentication no
   StrictHostKeyChecking no
   Port {{ pillar.get('sshfs_port', 1022) }}
-  IdentityFile '{{ pillar.get('sshfs_privkey', ssh_dir + '/sshfs_ed25519') }}'
-  UserKnownHostsFile '{{ known_hosts }}'
+  IdentityFile {{ pillar.get('sshfs_privkey', ssh_dir + '/sshfs_ed25519') }}
+  UserKnownHostsFile {{ known_hosts }}
