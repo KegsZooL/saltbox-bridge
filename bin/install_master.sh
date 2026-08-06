@@ -530,15 +530,13 @@ function 02__setup_crt() {
 
     case "${mode}" in
       "1"|"Auto search in current dir")
-        path_to_crt=$(search_redis_crt)
-        if [[ ! -f "${path_to_crt}" ]]; then
+        if ! path_to_crt=$(search_redis_crt) && [[ ! -f "${path_to_crt}" ]]; then
           continue
         fi
         break
         ;;
       "2"|"Specify path to certificate")
-        path_to_crt=$(get_redis_crt)
-        if [[ ! -f "${path_to_crt}" ]]; then
+        if ! path_to_crt=$(get_redis_crt) && [[ ! -f "${path_to_crt}" ]]; then
           continue
         fi
         break
