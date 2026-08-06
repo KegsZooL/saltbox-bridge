@@ -101,6 +101,7 @@ messages[tittle,en]='
  #######################################################
    ####################################################
 '
+
 messages[tittle,ru]='
    ####################################################
  ########################################################
@@ -123,6 +124,7 @@ messages[crt_setup,en]='Redis certificate setup:
 \t1 - Search for a certificate in the current directory
 \t2 - Specify a path to the `redis-ca.crt` file
 \tChoice [1/2] (default `1`): '
+
 messages[crt_setup,ru]='Настройка сертификата Redis:
 \t1 - Поиск сертификата в текущей директории
 \t2 - Указать путь до файла `redis-ca.crt`
@@ -150,26 +152,52 @@ messages[crt_install_failed,en]='Failed to install Redis certificate!'
 messages[crt_install_failed,ru]='Не удалось установить сертификат Redis!'
 
 messages[help,en]='Install and connect a secondary Salt-Master to SaltBox.
+
 Usage: ./saltbox-master-install.sh [--en_locale|--ru_locale] [-h|--help]
-  --en_locale\t\tRun in English
-  --ru_locale\t\tRun in Russian (default)
-  -h|--help\t\tPrint this message\n
+  --en_locale\t\tDisplay script text in English
+  --ru_locale\t\tDisplay script text in Russian (default)
+  -h|--help\t\tPrint this message
+
 [NOTE] The script must be run as root.
-It installs Salt, configures the saltbox-bridge, sets up master/minion
-configs, and connects this Salt-Master to SaltBox via Redis.\n
-You will be asked to provide the `redis-ca.crt` certificate: search
-automatically in the current directory or specify a path.
+
+What it does:
+\t1. Installs required system packages (curl, git, rsync, gettext, etc.)
+\t2. Installs Salt from the official APT repository
+\t3. Clones or updates the saltbox-bridge repository (https://dev.saltbox.pro/saltbox/saltbox-bridge)
+\t4. Syncs Bridge files into Salt directories and installs the Bridge python package
+\t5. Checks connectivity to the SaltBox Redis instance
+\t6. Renders master, minion and saltbox configs from Bridge templates
+\t7. Enables and restarts the salt-master service
+
+During the run you will be asked to:
+\t- provide the `redis-ca.crt` certificate
+\t- provide the SaltBox IP address and Redis port
+\t- choose a Salt master ID and log levels for master/minion
+\t- provide Redis credentials used by the SaltBox config
 '
 messages[help,ru]='Установка и подключение стороннего Salt-Master к SaltBox.
+
 Использование: ./saltbox-master-install.sh [--en_locale|--ru_locale] [-h|--help]
-  --en_locale\t\tЗапустить на английском
-  --ru_locale\t\tЗапустить на русском (по умолчанию)
-  -h|--help\t\tВывести это сообщение\n
-[ПРИМЕЧАНИЕ] Скрипт должен быть запущен от имени root.\n
-Скрипт устанавливает Salt, настраивает saltbox-bridge, конфигурирует
-master/minion и подключает данный Salt-Master к SaltBox через Redis.\n
-Будет предложено указать сертификат `redis-ca.crt`: автопоиск в текущей
-директории либо указание пути к файлу.
+  --en_locale\t\tОтображать текст скрипта на английском языке
+  --ru_locale\t\tОтображать текст скрипта на русском языке (по умолчанию)
+  -h|--help\t\tВывести это сообщение
+ 
+[ПРИМЕЧАНИЕ] Скрипт должен быть запущен от имени root.
+ 
+Что делает скрипт:
+\t1. Устанавливает необходимые системные пакеты (curl, git, rsync, gettext и др.)
+\t2. Устанавливает Salt из официального APT-репозитория
+\t3. Клонирует или обновляет репозиторий saltbox-bridge (https://dev.saltbox.pro/saltbox/saltbox-bridge)
+\t4. Синхронизирует файлы Bridge в директории Salt и устанавливает python пакет Bridge сервиса
+\t5. Проверяет подключение к Redis-инстансу SaltBox
+\t6. Формирует конфигурации master, minion и saltbox из шаблонов Bridge сервиса
+\t7. Включает и перезапускает сервис salt-master
+
+В процессе выполнения будет предложено:
+\t- указать сертификат `redis-ca.crt`
+\t- указать IP-адрес SaltBox и порт Redis
+\t- выбрать ID для Salt мастера и уровни логирования для master/minion
+\t- указать данные для подключения к Redis, используемые в SaltBox конфигурации
 '
 
 messages[master_entity_name,en]='Salt master'
@@ -401,28 +429,28 @@ messages[config_written_to,ru]='Конфигурация записана в: %s
 
 messages[master_service_enabling,en]='Enabling salt-master service...'
 messages[master_service_enabling,ru]='Включение сервиса salt-master...'
- 
+
 messages[master_service_enable_failed,en]='Failed to enable salt-master service!'
 messages[master_service_enable_failed,ru]='Не удалось включить сервис salt-master!'
- 
+
 messages[master_service_restarting,en]='Restarting salt-master service...'
 messages[master_service_restarting,ru]='Перезапуск сервиса salt-master...'
- 
+
 messages[master_service_restart_failed,en]='Failed to restart salt-master service!'
 messages[master_service_restart_failed,ru]='Не удалось перезапустить сервис salt-master!'
- 
+
 messages[master_service_not_active,en]='salt-master service is not active after restart!'
 messages[master_service_not_active,ru]='Сервис salt-master не активен после перезапуска!'
- 
+
 messages[master_service_started_success,en]='salt-master service started successfully'
 messages[master_service_started_success,ru]='Сервис salt-master успешно запущен'
- 
+
 messages[minion_service_disabling,en]='Disabling salt-minion service...'
 messages[minion_service_disabling,ru]='Отключение сервиса salt-minion...'
- 
+
 messages[minion_service_disable_failed,en]='Failed to disable salt-minion service (non-critical)'
 messages[minion_service_disable_failed,ru]='Не удалось отключить сервис salt-minion (не критично)'
- 
+
 messages[minion_service_disabled_success,en]='salt-minion service disabled successfully'
 messages[minion_service_disabled_success,ru]='Сервис salt-minion успешно отключён'
 
@@ -547,7 +575,7 @@ function 02__setup_crt() {
   local path_to_crt
   local mode
   choice_msg=$(log "INFO" crt_setup)
-  
+
   while true; do
 
     read -rp "${choice_msg}" mode
@@ -571,9 +599,9 @@ function 02__setup_crt() {
         ;;
     esac
   done
-  
+
   log "INFO" crt_install_start 
-  
+
   local crt_dirname
   crt_dirname=$(dirname "${salt_crt_destination}")
 
@@ -654,7 +682,7 @@ function apt_install() {
   if ! run_indented apt-get update ; then
     log "ERROR" install_pkgs_failed
   fi
-  
+
   local apt_cmd
   apt_cmd=(apt-get install -y --no-install-recommends -V --show-progress "${missing_pkgs[@]}")
 
@@ -672,7 +700,7 @@ function 04__install_deps() {
 }
 
 function pin_salt_version() {
-  
+
   local salt_pin_content
   salt_pin_content="Package: salt-*
   Pin: version ${salt_version}
@@ -691,7 +719,7 @@ function 05__install_salt() {
 
   log "INFO" install_salt
   mkdir -p /etc/apt/keyrings
-  
+
   local curl_cmd
   curl_cmd=(curl -fsSL "${gpg_salt_key_url}")
 
@@ -711,7 +739,7 @@ function 05__install_salt() {
   log "INFO" salt_apt_sources_install_success
 
   pin_salt_version
-  
+
   apt_install "${salt_pkgs[@]}"
   log "INFO" install_salt_success
 }
@@ -761,7 +789,7 @@ function get_endpoint_part() {
     if "${validator}" "${value}"; then
       break
     fi
-    
+
     if [[ -z "${value}" ]]; then
       log "ERROR" empty_value
     else
@@ -814,7 +842,7 @@ function 06__prepare_salt_dir() {
     /etc/salt/ssl
   )
   log "INFO" prepare_salt_dir
-  
+
   for dir in "${dirs[@]}"; do
     cmd=(mkdir -pv "${dir}")
     if ! run_indented "${cmd[@]}"; then
@@ -843,7 +871,7 @@ function update_saltbox_bridge() {
 
   if [[ -d "${dir}/.git" ]]; then
     log "INFO" saltbox_bridge_updating
-    
+
     local git_pull_cmd
     git_pull_cmd=(git -C "${dir}" pull)
 
@@ -962,22 +990,22 @@ function 07__prepare_saltbox_bridge() {
 }
 
 function 08__sync_bridge_files() {
-  
+
   local -A targets
   targets['engines/']=/srv/salt_extmod/engines/
   targets['runners/']=/srv/salt_extmod/runners/
   targets['pillar/']=/srv/salt_extmod/pillar/
   targets['master/salt_master_local/']=/srv/salt_master_local/
   targets['master/salt_local/']=/srv/salt_local/
-  
+
   log "INFO" sync_bridge_files_start
-  
+
   local source
   for source in "${!targets[@]}"; do
 
     local destination
     destination="${targets["${source}"]}"
-    
+
     local full_source="${bridge_dir}/"${source}
 
     local rsync_cmd
@@ -993,7 +1021,7 @@ function 08__sync_bridge_files() {
 function 09__install_bridge() {
 
   log "INFO" install_bridge_start
-  
+
   if [[ ! -d "${bridge_python_package_dir}" ]]; then
     log "ERROR" bridge_dir_not_found "${bridge_python_package_dir}"
     exit 1
@@ -1008,7 +1036,7 @@ function 09__install_bridge() {
     log "ERROR" salt_pip_not_found "${salt_pip_binary_path}"
     exit 1
   fi
-  
+
   local pip_cmd
   pip_cmd=("${salt_pip_binary_path}" install "${bridge_python_package_dir}" --upgrade)
 
@@ -1035,7 +1063,7 @@ function render_config_template() {
     log "ERROR" config_render_failed "${template_path}"
     exit 1
   fi
-  
+
   local extended_content
   if [[ -n "${extra_content}" ]]; then
     extended_content="${rendered_content}"$'\n'"${extra_content}"
@@ -1047,7 +1075,7 @@ function render_config_template() {
 }
 
 function specify_log_lvl() {
-  
+
   local entity_name_key="${1}"
   local default_lvl="${2}"
 
@@ -1081,7 +1109,7 @@ function specify_log_lvl() {
 }
 
 function 10__setup_configs() {
-  
+
   log "INFO" setup_configs_start
 
   local master_id_prompt
@@ -1098,7 +1126,7 @@ function 10__setup_configs() {
   export SALT_MINION_LOG_LEVEL="${minion_log_lvl}"
 
   log "INFO" master_conf_setup_start
-  
+
   local master_conf_extra
   # shellcheck disable=SC2059
   printf -v master_conf_extra "${master_conf_extra_tpl}" "${master_id}"
@@ -1112,7 +1140,7 @@ function 10__setup_configs() {
   render_config_template "${minion_conf_tpl}" "${minion_conf_path}" "${minion_conf_extra}"
 
   log "INFO" saltbox_conf_setup_start
-    
+
   local redis_user_prompt
   redis_user_prompt="$(log "INFO" specify_redis_user "${default_redis_user}")"
 
