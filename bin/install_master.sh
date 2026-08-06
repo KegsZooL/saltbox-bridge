@@ -534,7 +534,7 @@ function get_redis_crt() {
   local input_msg
 
   input_msg=$(log "INFO" crt_specify)
-  read -rp "${input_msg}" path
+  read -erp "${input_msg}" path
 
   if ! check_redis_crt "${path}" 1>&2; then
     return 1
