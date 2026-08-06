@@ -153,7 +153,7 @@ messages[crt_install_failed,ru]='Не удалось установить сер
 
 messages[help,en]='Install and connect a secondary Salt-Master to SaltBox.
 
-Usage: ./saltbox-master-install.sh [--en_locale|--ru_locale] [-h|--help]
+Usage: ./bin/install_master.sh [--en_locale|--ru_locale] [-h|--help]
   --en_locale\t\tDisplay script text in English
   --ru_locale\t\tDisplay script text in Russian (default)
   -h|--help\t\tPrint this message
@@ -177,7 +177,7 @@ During the run you will be asked to:
 '
 messages[help,ru]='Установка и подключение стороннего Salt-Master к SaltBox.
 
-Использование: ./saltbox-master-install.sh [--en_locale|--ru_locale] [-h|--help]
+Использование: ./bin/install_master.sh [--en_locale|--ru_locale] [-h|--help]
   --en_locale\t\tОтображать текст скрипта на английском языке
   --ru_locale\t\tОтображать текст скрипта на русском языке (по умолчанию)
   -h|--help\t\tВывести это сообщение
