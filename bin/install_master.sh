@@ -84,8 +84,7 @@ declare -r master_id_timestamp_format="+%Y%m%d-%H%M%S"
 # shellcheck disable=SC2155
 declare -r default_master_id="master-$(date "${master_id_timestamp_format}")"
 
-declare -r default_master_log_level="info"
-declare -r default_minion_log_level="info"
+declare -r default_entity_log_lvl="1"
 declare -r default_redis_user="redis"
 
 declare -A messages
@@ -172,6 +171,12 @@ master/minion и подключает данный Salt-Master к SaltBox чер
 Будет предложено указать сертификат `redis-ca.crt`: автопоиск в текущей
 директории либо указание пути к файлу.
 '
+
+messages[master_entity_name,en]='Salt master'
+messages[master_entity_name,ru]='Salt мастера'
+
+messages[minion_entity_name,en]='Salt minion'
+messages[minion_entity_name,ru]='Salt миньона'
 
 messages[install_salt_deps,en]='Installing Salt dependencies...'
 messages[install_salt_deps,ru]='Установка зависимостей Salt...'
@@ -326,11 +331,31 @@ messages[salt_pip_not_found,ru]='Бинарник pip3 из Salt не найде
 messages[specify_master_id,en]='Specify Salt master ID (default: %s): '
 messages[specify_master_id,ru]='Укажите ID для Salt мастера (по умолчанию: %s): '
 
-messages[specify_master_log_level,en]='Specify Salt master log level (default: %s): '
-messages[specify_master_log_level,ru]='Укажите уровень логирования для Salt мастера (по умолчанию: %s): '
+messages[specify_log_lvl,en]='Specify %s log level:
+\t0 - all (everything)
+\t1 - info (default; normal log information)
+\t2 - warning
+\t3 - error
+\t4 - critical
+\t5 - quiet (nothing should be logged)
+\t6 - debug (useful for debugging Salt code)
+\t7 - profile (Salt performance profiling info)
+\t8 - trace (detailed code debugging)
+\t9 - garbage (even more debugging detail)
+\tChoice [0-9] (default `1`): '
 
-messages[specify_minion_log_level,en]='Specify Salt minion log level (default: warning): '
-messages[specify_minion_log_level,ru]='Укажите уровень логирования для Salt миньона (по умолчанию: %s): '
+messages[specify_log_lvl,ru]='Укажите уровень логирования для %s:
+\t0 - all (абсолютно всё)
+\t1 - info (по умолчанию; обычная лог-информация)
+\t2 - warning (предупреждения)
+\t3 - error (ошибки)
+\t4 - critical (критические ошибки)
+\t5 - quiet (ничего не должно логироваться)
+\t6 - debug (для отладки кода Salt)
+\t7 - profile (информация о производительности Salt)
+\t8 - trace (детальная отладка кода)
+\t9 - garbage (максимально подробная отладка)
+\tВыбор [0-9] (по умолчанию `1`): '
 
 messages[specify_redis_user,en]='Specify Redis username (default: %s): '
 messages[specify_redis_user,ru]='Укажите имя пользователя Redis (по умолчанию: %s): '
@@ -1021,6 +1046,40 @@ function render_config_template() {
   display_framed "${extended_content}"
 }
 
+function specify_log_lvl() {
+  
+  local entity_name_key="${1}"
+  local default_lvl="${2}"
+
+  local lvl
+  local prompt
+  local entity_name
+
+  entity_name="$(extract_msg_from_aarr "${entity_name_key}")"
+  prompt=$(log "INFO" specify_log_lvl "${entity_name}")
+
+  while true; do
+    read -rp "${prompt}" lvl
+    lvl="${lvl:-${default_lvl}}" # NOTE: https://docs.saltproject.io/en/latest/ref/configuration/logging/index.html
+    case "${lvl}" in
+      "1") lvl="info"; break ;;
+      "2") lvl="warning"; break ;;
+      "3") lvl="error"; break ;;
+      "4") lvl="critical"; break ;;
+      "5") lvl="quiet"; break ;;
+      "6") lvl="debug"; break ;;
+      "7") lvl="profile"; break ;;
+      "8") lvl="trace"; break ;;
+      "9") lvl="garbage"; break ;;
+      "0") lvl="all"; break ;;
+      *)
+        log "ERROR" unknown_option "${lvl}"
+        ;;
+    esac
+  done
+  printf "%s" "${lvl}"
+}
+
 function 10__setup_configs() {
   
   log "INFO" setup_configs_start
@@ -1032,18 +1091,11 @@ function 10__setup_configs() {
   read -rp "${master_id_prompt}" master_id
   master_id="${master_id:-${default_master_id}}"
 
-  local master_log_level
-  master_log_level_prompt=$(log "INFO" specify_master_log_level "${default_master_log_level}")
-  read -rp "${master_log_level_prompt}" master_log_level
-  master_log_level="${master_log_level:-${default_master_log_level}}"
+  master_log_lvl=$(specify_log_lvl master_entity_name "${default_entity_log_lvl}")
+  minion_log_lvl=$(specify_log_lvl minion_entity_name "${default_entity_log_lvl}")
 
-  local minion_log_level
-  minion_log_level_prompt=$(log "INFO" specify_minion_log_level "${default_minion_log_level}")
-  read -rp "${minion_log_level_prompt}" minion_log_level_prompt
-  minion_log_level="${minion_log_level:-${default_minion_log_level}}"
-
-  export SALT_MASTER_LOG_LEVEL="${master_log_level}"
-  export SALT_MINION_LOG_LEVEL="${minion_log_level}"
+  export SALT_MASTER_LOG_LEVEL="${master_log_lvl}"
+  export SALT_MINION_LOG_LEVEL="${minion_log_lvl}"
 
   log "INFO" master_conf_setup_start
   
