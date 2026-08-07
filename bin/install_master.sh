@@ -32,30 +32,43 @@ declare -r salt_crt_destination="/etc/salt/ssl/${crt_file_name}"
 declare -r correct_head_crt="-----BEGIN CERTIFICATE-----"
 declare -r correct_tail_crt="-----END CERTIFICATE-----"
 
-declare -r salt_pin_path=/etc/apt/preferences.d/salt-pin-1001
-declare -r salt_keyring_path=/etc/apt/keyrings/salt-archive-keyring.pgp
-declare -r salt_apt_sources_path=/etc/apt/sources.list.d/salt.sources
-declare -r salt_pip_binary_path="/opt/saltstack/salt/bin/pip3"
-
-declare -r salt_sources_url=https://github.com/saltstack/salt-install-guide/releases/latest/download/salt.sources
-declare -r gpg_salt_key_url=https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public
-declare -r saltbox_bridge_repo_url="https://dev.saltbox.pro/saltbox/saltbox-bridge.git"
-
 declare -r salt_version=3007.13
 declare -r salt_pkgs=(
   "salt-common=${salt_version}"
   "salt-master=${salt_version}"
   "salt-minion=${salt_version}"
 )
+
+declare -r salt_pkg_pin_content="Package: salt-*
+Pin: version ${salt_version}
+Pin-Priority: 1001
+"
+
+declare -r salt_pkg_pin_path=/etc/apt/preferences.d/salt-pin-1001
+declare -r salt_keyring_path=/etc/apt/keyrings/salt-archive-keyring.pgp
+declare -r salt_apt_sources_path=/etc/apt/sources.list.d/salt.sources
+declare -r salt_optional_path=/opt/saltstack
+declare -r salt_pip_binary_path="${salt_optional_path}/salt/bin/pip3"
+declare -r evil_path="${salt_optional_path}/evil-minions"
+
+declare -r salt_sources_url=https://github.com/saltstack/salt-install-guide/releases/latest/download/salt.sources
+declare -r gpg_salt_key_url=https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public
+declare -r saltbox_bridge_repo_url=https://dev.saltbox.pro/saltbox/saltbox-bridge.git
+declare -r repo_evil_url=https://dev.saltbox.pro/saltbox/saltbox-evil-minions.git
+
 declare -r dependencies=(curl gnupg git rsync netcat-openbsd gettext-base)
 
 declare -ri default_redis_port=6379
 declare -r ip_regex='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
 declare -r port_regex='^[0-9]+$'
+declare -r positive_int_regex='^[1-9][0-9]*$'
 
+declare -r etc_system_path=/etc/systemd/system
 declare -r master_conf_path=/etc/salt/master
 declare -r minion_conf_path=/etc/salt/minion
 declare -r saltbox_conf_path=/etc/salt/saltbox
+declare -r minion_override_conf_path=/etc/salt/minion.d
+declare -r evil_env_path=/etc/evil-minions.env
 
 declare -r master_conf_tpl="${bridge_dir}/master/templates/master.conf.tpl"
 declare -r minion_conf_tpl="${bridge_dir}/master/templates/minion.conf.tpl"
@@ -68,24 +81,54 @@ salt_box_master_id: %s
 EOF
 )"
 
-# shellcheck disable=SC2155
-declare -r minion_conf_extra_tpl="$(cat <<'EOF'
-id: %s
-EOF
-)"
-
 declare -r saltbox_conf_extra_tpl='redis_host: ${SALTBOX_IP} 
 redis_ssl_ca_certs: '"${salt_crt_destination}"'
 salt_conf_server: ${SALTBOX_IP}
 sshfs_server: ${SALTBOX_IP}'
+
+# shellcheck disable=SC2155
+declare -r evil_env_override_content_tpl="$(cat <<'EOF'
+COUNT=%s
+LOG_LEVEL=%s
+EOF
+)"
+
+declare -r evil_override_wating_content='master_tries: -1
+retry_dns: 5
+recon_randomize: False
+recon_max: 0
+'
 
 declare -r master_id_timestamp_format="+%Y%m%d-%H%M%S"
 
 # shellcheck disable=SC2155
 declare -r default_master_id="master-$(date "${master_id_timestamp_format}")"
 
+declare -r salt_log_lvl_map=(
+  "0:all"
+  "1:info"
+  "2:warning"
+  "3:error"
+  "4:critical"
+  "5:quiet"
+  "6:debug"
+  "7:profile"
+  "8:trace"
+  "9:garbage"
+)
+
+declare -r evil_log_lvl_map=(
+  "1:INFO"
+  "2:WARNING"
+  "3:ERROR"
+  "4:CRITICAL"
+  "5:DEBUG"
+)
+
 declare -r default_entity_log_lvl="1"
 declare -r default_redis_user="redis"
+declare -ri default_evil_count=100
+declare -r default_evil_master_ip="127.0.0.1"
 
 declare -A messages
 declare -r log_pause_seconds=0.5
@@ -153,7 +196,7 @@ messages[crt_install_failed,ru]='Не удалось установить сер
 
 messages[help,en]='Install and connect a secondary Salt-Master to SaltBox.
 
-Usage: ./bin/install_master.sh [--en_locale|--ru_locale] [-h|--help]
+Usage: ./saltbox-master-install.sh [--en_locale|--ru_locale] [-h|--help]
   --en_locale\t\tDisplay script text in English
   --ru_locale\t\tDisplay script text in Russian (default)
   -h|--help\t\tPrint this message
@@ -177,7 +220,7 @@ During the run you will be asked to:
 '
 messages[help,ru]='Установка и подключение стороннего Salt-Master к SaltBox.
 
-Использование: ./bin/install_master.sh [--en_locale|--ru_locale] [-h|--help]
+Использование: ./saltbox-master-install.sh [--en_locale|--ru_locale] [-h|--help]
   --en_locale\t\tОтображать текст скрипта на английском языке
   --ru_locale\t\tОтображать текст скрипта на русском языке (по умолчанию)
   -h|--help\t\tВывести это сообщение
@@ -221,32 +264,29 @@ messages[install_pkgs_failed,ru]='Не удалось установить па�
 messages[install_salt,en]="Installing Salt v${salt_version}..."
 messages[install_salt,ru]="Установка Salt v${salt_version}..."
 
-messages[salt_key_installing,en]='Installing Salt GPG key...'
-messages[salt_key_installing,ru]='Установка GPG-ключа Salt...'
+messages[keyring_installing,en]='Installing %s GPG key...'
+messages[keyring_installing,ru]='Установка GPG-ключа %s...'
 
-messages[salt_key_install_success,en]='Salt GPG key installed successfully'
-messages[salt_key_install_success,ru]='GPG-ключ Salt успешно установлен'
+messages[keyring_install_success,en]='%s GPG key installed successfully'
+messages[keyring_install_success,ru]='GPG-ключ %s успешно установлен'
 
-messages[salt_key_install_failed,en]='Failed to install Salt GPG key!'
-messages[salt_key_install_failed,ru]='Не удалось установить GPG-ключ Salt!'
+messages[keyring_install_failed,en]='Failed to install %s GPG key!'
+messages[keyring_install_failed,ru]='Не удалось установить %s GPG-ключ!'
 
-messages[salt_apt_sources_installing,en]='Installing Salt APT sources...'
-messages[salt_apt_sources_installing,ru]='Установка списка источников APT для Salt...'
+messages[apt_sources_installing,en]='Installing %s APT sources...'
+messages[apt_sources_installing,ru]='Установка списка источников APT для %s...'
 
-messages[salt_apt_sources_install_success,en]='Salt APT sources installed successfully'
-messages[salt_apt_sources_install_success,ru]='Список источников APT для Salt успешно установлен'
+messages[apt_sources_install_success,en]='%s APT sources installed successfully'
+messages[apt_sources_install_success,ru]='Список источников APT для %s успешно установлен'
 
-messages[salt_apt_sources_install_failed,en]='Failed to install Salt APT sources!'
-messages[salt_apt_sources_install_failed,ru]='Не удалось установить список источников APT для Salt!'
+messages[apt_sources_install_failed,en]='Failed to install %s APT sources!'
+messages[apt_sources_install_failed,ru]='Не удалось установить список источников APT для %s!'
 
-messages[salt_pin_installing,en]='Pinning Salt package version...'
-messages[salt_pin_installing,ru]='Закрепление версии пакетов Salt...'
+messages[pin_installing,en]='Pinning %s package version...'
+messages[pin_installing,ru]='Закрепление версии пакетов %s...'
 
-messages[salt_pin_install_success,en]='Salt package version pinned successfully'
-messages[salt_pin_install_success,ru]='Версия Salt пакетов успешно закреплена'
-
-messages[salt_pin_install_failed,en]='Failed to pin Salt package version!'
-messages[salt_pin_install_failed,ru]='Не удалось закрепить версию Salt пакетов!'
+messages[pin_install_success,en]='%s package version pinned successfully'
+messages[pin_install_success,ru]='Версия %s пакетов успешно закреплена'
 
 messages[install_salt_success,en]="Salt v${salt_version} installed successfully"
 messages[install_salt_success,ru]="Salt v${salt_version} успешно установлен"
@@ -284,14 +324,14 @@ messages[prepare_salt_dir_success,ru]='Директории Salt успешно 
 messages[prepare_salt_dir_failed,en]='Failed to prepare Salt directories!'
 messages[prepare_salt_dir_failed,ru]='Не удалось подготовить Salt директории!'
 
-messages[saltbox_bridge_cloning,en]='Cloning saltbox-bridge repository...'
-messages[saltbox_bridge_cloning,ru]='Клонирование репозитория saltbox-bridge...'
+messages[repo_cloning,en]='Cloning %s repository...'
+messages[repo_cloning,ru]='Клонирование репозитория %s...'
 
-messages[saltbox_bridge_clone_success,en]='saltbox-bridge cloned successfully'
-messages[saltbox_bridge_clone_success,ru]='Репозиторий saltbox-bridge успешно клонирован'
+messages[repo_clone_success,en]='%s cloned successfully'
+messages[repo_clone_success,ru]='Репозиторий %s успешно клонирован'
 
-messages[saltbox_bridge_clone_failed,en]='Failed to clone saltbox-bridge repository!'
-messages[saltbox_bridge_clone_failed,ru]='Не удалось клонировать репозиторий saltbox-bridge!'
+messages[repo_clone_failed,en]='Failed to clone %s repository!'
+messages[repo_clone_failed,ru]='Не удалось клонировать репозиторий %s!'
 
 messages[saltbox_bridge_updating,en]='Updating saltbox-bridge repository...'
 messages[saltbox_bridge_updating,ru]='Обновление репозитория saltbox-bridge...'
@@ -319,9 +359,6 @@ messages[confirm_delete_bridge,ru]='Подтвердите: удалить и з
 
 messages[bridge_delete_cancelled,en]='Deletion cancelled, using existing local copy'
 messages[bridge_delete_cancelled,ru]='Удаление отменено, используется существующая локальная копия'
-
-messages[bridge_remove_failed,en]='Failed to remove local saltbox-bridge directory!'
-messages[bridge_remove_failed,ru]='Не удалось удалить локальную директорию saltbox-bridge!'
 
 messages[bridge_will_be_deleted,en]='This will PERMANENTLY DELETE the local saltbox-bridge directory:'
 messages[bridge_will_be_deleted,ru]='Локальная директория saltbox-bridge будет БЕЗВОЗВРАТНО УДАЛЕНА'
@@ -385,6 +422,22 @@ messages[specify_log_lvl,ru]='Укажите уровень логировани
 \t9 - garbage (максимально подробная отладка)
 \tВыбор [0-9] (по умолчанию `1`): '
 
+messages[specify_evil_log_lvl,en]='Specify Evil Minions log level:
+\t1 - INFO (default; normal log information)
+\t2 - WARNING
+\t3 - ERROR
+\t4 - CRITICAL
+\t5 - DEBUG (useful for debugging Salt code)
+\tChoice [1-5] (default `1`): '
+
+messages[specify_evil_log_lvl,ru]='Укажите уровень логирования для Evil Minions:
+\t1 - INFO (по умолчанию; обычная лог-информация)
+\t2 - WARNING (предупреждения)
+\t3 - ERROR (ошибки)
+\t4 - CRITICAL (критические ошибки)
+\t5 - DEBUG (для отладки кода Salt)
+\tВыбор [1-5] (по умолчанию `1`): '
+
 messages[specify_redis_user,en]='Specify Redis username (default: %s): '
 messages[specify_redis_user,ru]='Укажите имя пользователя Redis (по умолчанию: %s): '
 
@@ -427,20 +480,20 @@ messages[setup_configs_success,ru]='Все конфигурационные фа
 messages[config_written_to,en]='Config written to: %s'
 messages[config_written_to,ru]='Конфигурация записана в: %s'
 
-messages[master_service_enabling,en]='Enabling salt-master service...'
-messages[master_service_enabling,ru]='Включение сервиса salt-master...'
+messages[system_service_enabling,en]='Enabling %s service...'
+messages[system_service_enabling,ru]='Включение сервиса %s...'
 
-messages[master_service_enable_failed,en]='Failed to enable salt-master service!'
-messages[master_service_enable_failed,ru]='Не удалось включить сервис salt-master!'
+messages[system_service_enable_failed,en]='Failed to enable %s service!'
+messages[system_service_enable_failed,ru]='Не удалось включить сервис %s!'
 
-messages[master_service_restarting,en]='Restarting salt-master service...'
-messages[master_service_restarting,ru]='Перезапуск сервиса salt-master...'
+messages[system_service_restarting,en]='Restarting %s service...'
+messages[system_service_restarting,ru]='Перезапуск сервиса %s...'
 
-messages[master_service_restart_failed,en]='Failed to restart salt-master service!'
-messages[master_service_restart_failed,ru]='Не удалось перезапустить сервис salt-master!'
+messages[system_service_restart_failed,en]='Failed to restart %s service!'
+messages[system_service_restart_failed,ru]='Не удалось перезапустить сервис %s!'
 
-messages[master_service_not_active,en]='salt-master service is not active after restart!'
-messages[master_service_not_active,ru]='Сервис salt-master не активен после перезапуска!'
+messages[system_service_not_active,en]='%s service is not active after restart!'
+messages[system_service_not_active,ru]='Сервис %s не активен после перезапуска!'
 
 messages[master_service_started_success,en]='salt-master service started successfully'
 messages[master_service_started_success,ru]='Сервис salt-master успешно запущен'
@@ -453,6 +506,64 @@ messages[minion_service_disable_failed,ru]='Не удалось отключит
 
 messages[minion_service_disabled_success,en]='salt-minion service disabled successfully'
 messages[minion_service_disabled_success,ru]='Сервис salt-minion успешно отключён'
+
+messages[write_to_file,en]='Writing file: %s'
+messages[write_to_file,ru]='Запись файла: %s'
+
+messages[write_to_file_success,en]='File written successfully: %s'
+messages[write_to_file_success,ru]='Файл успешно записан: %s'
+
+messages[write_to_file_failed,en]='Failed to write file: %s'
+messages[write_to_file_failed,ru]='Не удалось записать файл: %s'
+
+messages[install_evil,en]='Installing evil-minions...'
+messages[install_evil,ru]='Установка evil-minions...'
+
+messages[evil_systemd_installing,en]='Installing evil-minions systemd units...'
+messages[evil_systemd_installing,ru]='Установка systemd-юнитов evil-minions...'
+
+messages[evil_systemd_install_success,en]='evil-minions systemd units installed successfully'
+messages[evil_systemd_install_success,ru]='Systemd-юниты evil-minions успешно установлены'
+
+messages[evil_systemd_install_failed,en]='Failed to install evil-minions systemd units!'
+messages[evil_systemd_install_failed,ru]='Не удалось установить systemd-юниты evil-minions!'
+
+messages[evil_env_install_failed,en]='Failed to install evil-minions environment file!'
+messages[evil_env_install_failed,ru]='Не удалось установить env-файл evil-minions!'
+
+messages[install_evil_success,en]='evil-minions installed successfully'
+messages[install_evil_success,ru]='evil-minions успешно установлен'
+
+messages[confirm_install_evil,en]='Install evil-minions? (y/n, default n): '
+messages[confirm_install_evil,ru]='Установить evil-minions? (y/n, по умолчанию n): '
+
+messages[install_evil_skipped,en]='Skipping evil-minions installation'
+messages[install_evil_skipped,ru]='Установка evil-minions пропущена'
+
+messages[install_evil,en]='Installing evil-minions...'
+messages[install_evil,ru]='Установка evil-minions...'
+
+messages[evil_master_ip_choice,en]='Which master address should evil-minions connect to?
+\t1 - Use the local master on this host (%s)
+\t2 - Specify a different master IP address
+\tChoice [1/2] (default `1`): '
+
+messages[evil_master_ip_choice,ru]='К какому адресу мастера должны подключаться evil-minions?
+\t1 - Использовать локальный мастер на этом хосте (%s)
+\t2 - Указать IP-адрес другого мастера
+\tВыбор [1/2] (по умолчанию `1`): '
+
+messages[specify_evil_master_ip,en]='Specify the master IP address for evil-minions: '
+messages[specify_evil_master_ip,ru]='Укажите IP-адрес мастера для evil-minions: '
+
+messages[specify_evil_count,en]='Specify the number of evil-minions to run (default: %s): '
+messages[specify_evil_count,ru]='Укажите количество evil-minions (по умолчанию: %s): '
+
+messages[invalid_count_format,en]='Invalid count: must be a positive integer!'
+messages[invalid_count_format,ru]='Неверное значение: должно быть положительным целым числом!'
+
+messages[repo_remove_failed,en]='Failed to remove existing directory for %s!'
+messages[repo_remove_failed,ru]='Не удалось удалить существующую директорию для %s!'
 
 LOCALE="ru"
 
@@ -523,7 +634,6 @@ function 01__display_tittle() {
   tittle_str="$(extract_msg_from_aarr tittle)"
   printf "%s\n\n" "${tittle_str}"
 }
-
 
 function check_redis_crt() {
   local path="${1}"
@@ -699,48 +809,86 @@ function 04__install_deps() {
   apt_install "${dependencies[@]}"
 }
 
-function pin_salt_version() {
+function write_to_file() {
 
-  local salt_pin_content
-  salt_pin_content="Package: salt-*
-  Pin: version ${salt_version}
-  Pin-Priority: 1001
-  "
-  log "INFO" salt_pin_installing 
+  local content="${1}"
+  local file_path=${2}
 
-  if ! cat <<< "${salt_pin_content}" > "${salt_pin_path}"; then
-    log "ERROR" salt_pin_install_failed
+  local dir_path
+  dir_path="$(dirname "${file_path}")"
+
+  if ! mkdir -p "${dir_path}"; then
+    log "ERROR" write_to_file_failed "${file_path}"
     exit 1
   fi
-  log "INFO" salt_pin_install_success
+
+  log "INFO" write_to_file "${file_path}"
+  display_framed "${content}"
+
+  if ! printf "%s\n" "${content}" > "${file_path}"; then
+    log "ERROR" write_to_file_failed "${file_path}"
+    exit 1
+  fi
+  log "INFO" write_to_file_success "${file_path}"
+}
+
+function pin_apt_version() {
+
+  local pin_content="${1}"
+  local pin_file_path="${2}"
+  local package_name="${3}"
+
+  log "INFO" pin_installing "${package_name}"
+  write_to_file "${pin_content}" "${pin_file_path}"
+  log "INFO" pin_install_success "${package_name}"
+}
+
+function add_gpg_keyring() {
+  local gpg_url="${1}"
+  local keyring_destination_path="${2}"
+  local package_name="${3}"
+
+  local curl_cmd
+  curl_cmd=(curl -fsSL "${gpg_url}")
+
+  mkdir -p /etc/apt/keyrings
+
+  log "INFO" keyring_installing "${package_name}"
+
+  if ! "${curl_cmd[@]}" | gpg --dearmor > "${keyring_destination_path}"; then
+    log "ERROR" keyring_install_failed "${package_name}"
+    exit 1
+  fi
+  log "INFO" keyring_install_success "${package_name}"
+}
+
+function add_apt_source() {
+  
+  local source_url="${1}"
+  local source_destination_path="${2}"
+  local package_name="${3}"
+
+  log "INFO" apt_sources_installing "${package_name}"
+
+  if ! curl -fsSL "${source_url}" > "${source_destination_path}"; then
+    log "ERROR" apt_sources_install_failed "${package_name}"
+    exit 1
+  fi
+  log "INFO" apt_sources_install_success "${package_name}"
 }
 
 function 05__install_salt() {
 
+  local package_name="Salt"
+
   log "INFO" install_salt
-  mkdir -p /etc/apt/keyrings
 
-  local curl_cmd
-  curl_cmd=(curl -fsSL "${gpg_salt_key_url}")
+  add_gpg_keyring "${gpg_salt_key_url}" "${salt_keyring_path}" "${package_name}"
+  add_apt_source "${salt_sources_url}" "${salt_apt_sources_path}" "${package_name}"
 
-  log "INFO" salt_key_installing
-  if ! "${curl_cmd[@]}" | gpg --dearmor > "${salt_keyring_path}"; then
-    log "ERROR" salt_key_install_failed
-    exit 1
-  fi
-  log "INFO" salt_key_install_success
-
-  log "INFO" salt_apt_sources_installing 
-
-  if ! curl -fsSL "${salt_sources_url}" > "${salt_apt_sources_path}"; then
-    log "ERROR" salt_apt_sources_install_failed
-    exit 1
-  fi
-  log "INFO" salt_apt_sources_install_success
-
-  pin_salt_version
-
+  pin_apt_version "${salt_pkg_pin_content}" "${salt_pkg_pin_path}" "${package_name}"
   apt_install "${salt_pkgs[@]}"
+
   log "INFO" install_salt_success
 }
 
@@ -770,7 +918,7 @@ function is_valid_ip() {
   return 0
 }
 
-function get_endpoint_part() {
+function get_validated_input() {
 
   local info_msg_key="${1}"
   local error_msg_key="${2}"
@@ -778,7 +926,7 @@ function get_endpoint_part() {
   local default_value="${4:-}"
 
   local prompt
-  prompt=$(log "INFO" "${info_msg_key}")
+  prompt=$(log "INFO" "${info_msg_key}" "${default_value}")
 
   local value="${default_value}"
 
@@ -800,17 +948,16 @@ function get_endpoint_part() {
   printf "%s" "${value}"
 }
 
-
 function 03__check_redis_connection() {
 
   local saltbox_ip
-  saltbox_ip="$(get_endpoint_part \
+  saltbox_ip="$(get_validated_input \
     specify_saltbox_ip \
     invalid_ip_format \
     is_valid_ip)"
 
   local saltbox_redis_port
-  saltbox_redis_port="$(get_endpoint_part \
+  saltbox_redis_port="$(get_validated_input \
     specify_saltbox_port \
     invalid_port_format \
     is_valid_port \
@@ -853,17 +1000,32 @@ function 06__prepare_salt_dir() {
   log "INFO" prepare_salt_dir_success
 }
 
-function clone_saltbox_bridge() {
-  local target_dir="${1}"
+function clone_repository() {
+  
+  local source_url="${1}"
+  local destination="${2}"
+  local repo_name="${3}"
 
-  log "INFO" saltbox_bridge_cloning
-  git_clone_cmd=(git clone "${saltbox_bridge_repo_url}" "${target_dir}")
+  if [[ -d "${destination}" ]]; then
+    local remove_cmd
+    remove_cmd=(rm -rvf "${destination}")
+
+    if ! run_indented "${remove_cmd[@]}"; then
+      log "ERROR" repo_remove_failed "${repo_name}"
+      exit 1
+    fi
+  fi
+
+  log "INFO" repo_cloning "${repo_name}"
+
+  local git_clone_cmd
+  git_clone_cmd=(git clone "${source_url}" "${destination}")
 
   if ! run_indented "${git_clone_cmd[@]}"; then
-    log "ERROR" saltbox_bridge_clone_failed
+    log "ERROR" repo_clone_failed "${repo_name}"
     exit 1
   fi
-  log "INFO" saltbox_bridge_clone_success
+  log "INFO" repo_clone_success "${repo_name}"
 }
 
 function update_saltbox_bridge() {
@@ -960,6 +1122,8 @@ function 07__prepare_saltbox_bridge() {
   log "INFO" prepare_salt_bridge
 
   if [[ -d "${bridge_dir}" ]]; then
+
+    local repo_name="SaltBox Bridge"
     local use_local
     local prompt
 
@@ -969,21 +1133,13 @@ function 07__prepare_saltbox_bridge() {
 
     if [[ "${use_local}" != "y" ]]; then
       if confirm_delete_local_bridge "${bridge_dir}"; then
-
-        local remove_cmd
-        remove_cmd=(rm -rvf "${bridge_dir}")
-
-        if ! run_indented "${remove_cmd[@]}"; then
-          log "ERROR" bridge_remove_failed
-          exit 1
-        fi
-        clone_saltbox_bridge "${bridge_dir}"
+        clone_repository "${saltbox_bridge_repo_url}" "${bridge_dir}" "${repo_name}"
       else
         log "INFO" bridge_delete_cancelled
       fi
     fi
   else
-    clone_saltbox_bridge "${bridge_dir}"
+    clone_repository "${saltbox_bridge_repo_url}" "${bridge_dir}" "${repo_name}"
   fi
   update_saltbox_bridge "${bridge_dir}"
   switch_dev_branch_if_requested "${bridge_dir}"
@@ -1064,9 +1220,9 @@ function render_config_template() {
     exit 1
   fi
 
-  local extended_content
+  local extended_content="${rendered_content}"
   if [[ -n "${extra_content}" ]]; then
-    extended_content="${rendered_content}"$'\n'"${extra_content}"
+    extended_content="${extended_content}"$'\n'"${extra_content}"
   fi
   printf "%s" "${extended_content}" > "${destination_path}"
 
@@ -1074,38 +1230,42 @@ function render_config_template() {
   display_framed "${extended_content}"
 }
 
+# NOTE: https://docs.saltproject.io/en/latest/ref/configuration/logging/index.html
 function specify_log_lvl() {
 
-  local entity_name_key="${1}"
-  local default_lvl="${2}"
+  local prompt_key="${1}"
+  local entity_name_key="${2}"
+  local default_choice="${3}"
+  shift 3
+  local -a level_map=("${@}")
 
-  local lvl
+  local entity_name=""
+  if [[ -n "${entity_name_key}" ]]; then
+    entity_name="$(extract_msg_from_aarr "${entity_name_key}")"
+  fi
+
   local prompt
-  local entity_name
+  prompt=$(log "INFO" "${prompt_key}" "${entity_name}")
 
-  entity_name="$(extract_msg_from_aarr "${entity_name_key}")"
-  prompt=$(log "INFO" specify_log_lvl "${entity_name}")
+  local choice
+  local pair
+  local key
+  local val
 
   while true; do
-    read -rp "${prompt}" lvl
-    lvl="${lvl:-${default_lvl}}" # NOTE: https://docs.saltproject.io/en/latest/ref/configuration/logging/index.html
-    case "${lvl}" in
-      "1") lvl="info"; break ;;
-      "2") lvl="warning"; break ;;
-      "3") lvl="error"; break ;;
-      "4") lvl="critical"; break ;;
-      "5") lvl="quiet"; break ;;
-      "6") lvl="debug"; break ;;
-      "7") lvl="profile"; break ;;
-      "8") lvl="trace"; break ;;
-      "9") lvl="garbage"; break ;;
-      "0") lvl="all"; break ;;
-      *)
-        log "ERROR" unknown_option "${lvl}"
-        ;;
-    esac
+    read -rp "${prompt}" choice
+    choice="${choice:-${default_choice}}"
+
+    for pair in "${level_map[@]}"; do
+      key="${pair%%:*}"
+      val="${pair#*:}"
+      if [[ "${choice}" == "${key}" ]]; then
+        printf "%s" "${val}"
+        return 0
+      fi
+    done
+    log "ERROR" unknown_option "${default_choice}"
   done
-  printf "%s" "${lvl}"
 }
 
 function 10__setup_configs() {
@@ -1119,25 +1279,31 @@ function 10__setup_configs() {
   read -rp "${master_id_prompt}" master_id
   master_id="${master_id:-${default_master_id}}"
 
-  master_log_lvl=$(specify_log_lvl master_entity_name "${default_entity_log_lvl}")
-  minion_log_lvl=$(specify_log_lvl minion_entity_name "${default_entity_log_lvl}")
+  export SALTBOX_MASTER_ID="${master_id}"
+
+  master_log_lvl=$(specify_log_lvl \
+    specify_log_lvl \
+    master_entity_name \
+    "${default_entity_log_lvl}" \
+    "${salt_log_lvl_map[@]}")
+
+  minion_log_lvl=$(specify_log_lvl \
+    specify_log_lvl \
+    minion_entity_name \
+    "${default_entity_log_lvl}" \
+    "${salt_log_lvl_map[@]}")
 
   export SALT_MASTER_LOG_LEVEL="${master_log_lvl}"
   export SALT_MINION_LOG_LEVEL="${minion_log_lvl}"
 
   log "INFO" master_conf_setup_start
 
-  local master_conf_extra
   # shellcheck disable=SC2059
   printf -v master_conf_extra "${master_conf_extra_tpl}" "${master_id}"
   render_config_template "${master_conf_tpl}" "${master_conf_path}" "${master_conf_extra}"
 
   log "INFO" minion_conf_setup_start
-
-  local minion_conf_extra
-  # shellcheck disable=SC2059
-  printf -v minion_conf_extra "${minion_conf_extra_tpl}" "${master_id}"
-  render_config_template "${minion_conf_tpl}" "${minion_conf_path}" "${minion_conf_extra}"
+  render_config_template "${minion_conf_tpl}" "${minion_conf_path}"
 
   log "INFO" saltbox_conf_setup_start
 
@@ -1170,37 +1336,45 @@ function 10__setup_configs() {
   log "INFO" setup_configs_success
 }
 
-function 11__enable_master_service() {
+function enable_system_service() {
+  local service_name="${1}"
 
-  log "INFO" master_service_enabling
+  log "INFO" system_service_enabling "${service_name}"
 
   local enable_cmd
-  enable_cmd=(systemctl enable salt-master)
+  enable_cmd=(systemctl enable "${service_name}")
 
   if ! run_indented "${enable_cmd[@]}"; then
-    log "ERROR" master_service_enable_failed
+    log "ERROR" system_service_enable_failed "${service_name}"
     exit 1
   fi
 
-  log "INFO" master_service_restarting
+  log "INFO" system_service_restarting "${service_name}"
 
   local restart_cmd
-  restart_cmd=(systemctl restart salt-master)
+  restart_cmd=(systemctl restart "${service_name}")
 
   if ! run_indented "${restart_cmd[@]}"; then
-    log "ERROR" master_service_restart_failed
+    log "ERROR" system_service_restart_failed "$service_name"
     exit 1
   fi
 
-  if ! systemctl is-active --quiet salt-master; then
-    log "ERROR" master_service_not_active
+  local is_active_cmd
+  is_active_cmd=(systemctl is-active --quiet "${service_name}")
+
+  if ! run_indented "${is_active_cmd[@]}" ; then
+    log "ERROR" master_service_not_active "${service_name}"
     exit 1
   fi
+}
 
+function 11__enable_master_service() {
+  
+  local service_name="salt-master"
+  enable_system_service "${service_name}"
   log "INFO" master_service_started_success
 
   log "INFO" minion_service_disabling
-
   local disable_minion_cmd
   disable_minion_cmd=(systemctl disable --now salt-minion)
 
@@ -1209,6 +1383,138 @@ function 11__enable_master_service() {
   else
     log "INFO" minion_service_disabled_success
   fi
+}
+
+function is_valid_count() {
+  local count="${1}"
+  if [[ ! "${count}" =~ ${positive_int_regex} ]]; then
+    return 1
+  fi
+  return 0
+}
+
+function specify_evil_master_ip() {
+
+  local choice_msg
+  choice_msg="$(log "INFO" evil_master_ip_choice "${default_evil_master_ip}")"
+
+  local mode
+  while true; do
+
+    read -rp "${choice_msg}" mode
+    mode="${mode:-1}"
+
+    case "${mode}" in
+      "1")
+        printf "%s" "${default_evil_master_ip}"
+        return 0
+        ;;
+      "2")
+        get_validated_input \
+          specify_evil_master_ip \
+          invalid_ip_format \
+          is_valid_ip
+        return 0
+        ;;
+      *)
+        log "WARN" unknown_option "${mode}"
+        ;;
+    esac
+  done
+}
+
+function 12__install_evil_if_requested() {
+
+  local install_evil_prompt
+  install_evil_prompt=$(log "INFO" confirm_install_evil)
+
+  local install_evil_answer
+  read -rp "${install_evil_prompt}" install_evil_answer 
+  install_evil_answer="${install_evil_answer:-n}"
+
+  if [[ "${install_evil_answer}" != "y" ]]; then
+    log "INFO" install_evil_skipped
+    exit 0
+  fi
+
+  log "INFO" install_evil
+
+  local evil_master_ip
+  evil_master_ip="$(specify_evil_master_ip)"
+
+  local evil_count
+  evil_count="$(get_validated_input \
+    specify_evil_count \
+    invalid_count_format \
+    is_valid_count \
+    "${default_evil_count}")"
+
+  local minion_override_master_conf_path
+  minion_override_master_conf_path="${minion_override_conf_path}/master.conf"
+
+  local override_content
+  override_content="master: ${evil_master_ip}"
+
+  write_to_file "${override_content}" "${minion_override_master_conf_path}"
+
+  local minion_override_waiting_conf_path
+  minion_override_waiting_conf_path="${minion_override_conf_path}/waiting.conf"
+
+  write_to_file "${evil_override_wating_content}" "${minion_override_waiting_conf_path}"
+
+  local repo_name="Salt Evil Minions"
+  clone_repository "${repo_evil_url}" "${evil_path}" "${repo_name}"
+
+  local evil_systemd_dir="${evil_path}/systemd"
+
+  log "INFO" evil_systemd_installing
+
+  local -a evil_systemd_files=(
+    "${evil_systemd_dir}/evil-minions.service"
+    "${evil_systemd_dir}/evil-minions-restart.service"
+    "${evil_systemd_dir}/evil-minions-restart.timer"
+  )
+
+  local systemd_cp_cmd
+  systemd_cp_cmd=(cp -av "${evil_systemd_files[@]}" "${etc_system_path}/")
+
+  if ! run_indented "${systemd_cp_cmd[@]}"; then
+    log "ERROR" evil_systemd_install_failed
+    exit 1
+  fi
+
+  local evil_env_cp_cmd
+  evil_env_cp_cmd=(cp -av "${evil_systemd_dir}/evil-minions.env" "/etc/")
+
+  if ! run_indented "${evil_env_cp_cmd[@]}"; then
+    log "ERROR" evil_env_install_failed
+    exit 1
+  fi
+  log "INFO" evil_systemd_install_success
+
+  local evil_log_lvl
+  evil_log_lvl=$(specify_log_lvl \
+    specify_evil_log_lvl \
+    "" \
+    "${default_entity_log_lvl}" \
+    "${evil_log_lvl_map[@]}")
+
+  local evil_env_override_content
+  # shellcheck disable=SC2059
+  printf -v evil_env_override_content \
+    "${evil_env_override_content_tpl}" \
+    "${evil_count}" \
+    "${evil_log_lvl}"
+
+  write_to_file "${evil_env_override_content}" "${evil_env_path}"
+
+  local system_service_name="evil-minions"
+  local restart_service_name="evil-minions-restart.timer"
+
+  enable_system_service "${system_service_name}"
+  enable_system_service "${restart_service_name}"
+
+  log "INFO" install_evil_success
 }
 
 function compleate_stages() {
@@ -1224,6 +1530,7 @@ function compleate_stages() {
   09__install_bridge
   10__setup_configs
   11__enable_master_service
+  12__install_evil_if_requested
 }
 
 for i in "$@"; do
