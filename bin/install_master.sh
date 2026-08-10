@@ -49,26 +49,20 @@ declare -r salt_keyring_path=/etc/apt/keyrings/salt-archive-keyring.pgp
 declare -r salt_apt_sources_path=/etc/apt/sources.list.d/salt.sources
 declare -r salt_optional_path=/opt/saltstack
 declare -r salt_pip_binary_path="${salt_optional_path}/salt/bin/pip3"
-declare -r evil_path="${salt_optional_path}/evil-minions"
 
 declare -r salt_sources_url=https://github.com/saltstack/salt-install-guide/releases/latest/download/salt.sources
 declare -r gpg_salt_key_url=https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public
 declare -r saltbox_bridge_repo_url=https://dev.saltbox.pro/saltbox/saltbox-bridge.git
-declare -r repo_evil_url=https://dev.saltbox.pro/saltbox/saltbox-evil-minions.git
 
 declare -r dependencies=(curl gnupg git rsync netcat-openbsd gettext-base)
 
 declare -ri default_redis_port=6379
 declare -r ip_regex='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
 declare -r port_regex='^[0-9]+$'
-declare -r positive_int_regex='^[1-9][0-9]*$'
 
-declare -r etc_system_path=/etc/systemd/system
 declare -r master_conf_path=/etc/salt/master
 declare -r minion_conf_path=/etc/salt/minion
 declare -r saltbox_conf_path=/etc/salt/saltbox
-declare -r minion_override_conf_path=/etc/salt/minion.d
-declare -r evil_env_path=/etc/evil-minions.env
 
 declare -r master_conf_tpl="${bridge_dir}/master/templates/master.conf.tpl"
 declare -r minion_conf_tpl="${bridge_dir}/master/templates/minion.conf.tpl"
@@ -85,19 +79,6 @@ declare -r saltbox_conf_extra_tpl='redis_host: ${SALTBOX_IP}
 redis_ssl_ca_certs: '"${salt_crt_destination}"'
 salt_conf_server: ${SALTBOX_IP}
 sshfs_server: ${SALTBOX_IP}'
-
-# shellcheck disable=SC2155
-declare -r evil_env_override_content_tpl="$(cat <<'EOF'
-COUNT=%s
-LOG_LEVEL=%s
-EOF
-)"
-
-declare -r evil_override_wating_content='master_tries: -1
-retry_dns: 5
-recon_randomize: False
-recon_max: 0
-'
 
 declare -r master_id_timestamp_format="+%Y%m%d-%H%M%S"
 
@@ -117,18 +98,8 @@ declare -r salt_log_lvl_map=(
   "9:garbage"
 )
 
-declare -r evil_log_lvl_map=(
-  "1:INFO"
-  "2:WARNING"
-  "3:ERROR"
-  "4:CRITICAL"
-  "5:DEBUG"
-)
-
 declare -r default_entity_log_lvl="1"
 declare -r default_redis_user="redis"
-declare -ri default_evil_count=100
-declare -r default_evil_master_ip="127.0.0.1"
 
 declare -A messages
 declare -r log_pause_seconds=0.5
@@ -422,22 +393,6 @@ messages[specify_log_lvl,ru]='Укажите уровень логировани
 \t9 - garbage (максимально подробная отладка)
 \tВыбор [0-9] (по умолчанию `1`): '
 
-messages[specify_evil_log_lvl,en]='Specify Evil Minions log level:
-\t1 - INFO (default; normal log information)
-\t2 - WARNING
-\t3 - ERROR
-\t4 - CRITICAL
-\t5 - DEBUG (useful for debugging Salt code)
-\tChoice [1-5] (default `1`): '
-
-messages[specify_evil_log_lvl,ru]='Укажите уровень логирования для Evil Minions:
-\t1 - INFO (по умолчанию; обычная лог-информация)
-\t2 - WARNING (предупреждения)
-\t3 - ERROR (ошибки)
-\t4 - CRITICAL (критические ошибки)
-\t5 - DEBUG (для отладки кода Salt)
-\tВыбор [1-5] (по умолчанию `1`): '
-
 messages[specify_redis_user,en]='Specify Redis username (default: %s): '
 messages[specify_redis_user,ru]='Укажите имя пользователя Redis (по умолчанию: %s): '
 
@@ -515,52 +470,6 @@ messages[write_to_file_success,ru]='Файл успешно записан: %s'
 
 messages[write_to_file_failed,en]='Failed to write file: %s'
 messages[write_to_file_failed,ru]='Не удалось записать файл: %s'
-
-messages[install_evil,en]='Installing evil-minions...'
-messages[install_evil,ru]='Установка evil-minions...'
-
-messages[evil_systemd_installing,en]='Installing evil-minions systemd units...'
-messages[evil_systemd_installing,ru]='Установка systemd-юнитов evil-minions...'
-
-messages[evil_systemd_install_success,en]='evil-minions systemd units installed successfully'
-messages[evil_systemd_install_success,ru]='Systemd-юниты evil-minions успешно установлены'
-
-messages[evil_systemd_install_failed,en]='Failed to install evil-minions systemd units!'
-messages[evil_systemd_install_failed,ru]='Не удалось установить systemd-юниты evil-minions!'
-
-messages[evil_env_install_failed,en]='Failed to install evil-minions environment file!'
-messages[evil_env_install_failed,ru]='Не удалось установить env-файл evil-minions!'
-
-messages[install_evil_success,en]='evil-minions installed successfully'
-messages[install_evil_success,ru]='evil-minions успешно установлен'
-
-messages[confirm_install_evil,en]='Install evil-minions? (y/n, default n): '
-messages[confirm_install_evil,ru]='Установить evil-minions? (y/n, по умолчанию n): '
-
-messages[install_evil_skipped,en]='Skipping evil-minions installation'
-messages[install_evil_skipped,ru]='Установка evil-minions пропущена'
-
-messages[install_evil,en]='Installing evil-minions...'
-messages[install_evil,ru]='Установка evil-minions...'
-
-messages[evil_master_ip_choice,en]='Which master address should evil-minions connect to?
-\t1 - Use the local master on this host (%s)
-\t2 - Specify a different master IP address
-\tChoice [1/2] (default `1`): '
-
-messages[evil_master_ip_choice,ru]='К какому адресу мастера должны подключаться evil-minions?
-\t1 - Использовать локальный мастер на этом хосте (%s)
-\t2 - Указать IP-адрес другого мастера
-\tВыбор [1/2] (по умолчанию `1`): '
-
-messages[specify_evil_master_ip,en]='Specify the master IP address for evil-minions: '
-messages[specify_evil_master_ip,ru]='Укажите IP-адрес мастера для evil-minions: '
-
-messages[specify_evil_count,en]='Specify the number of evil-minions to run (default: %s): '
-messages[specify_evil_count,ru]='Укажите количество evil-minions (по умолчанию: %s): '
-
-messages[invalid_count_format,en]='Invalid count: must be a positive integer!'
-messages[invalid_count_format,ru]='Неверное значение: должно быть положительным целым числом!'
 
 messages[repo_remove_failed,en]='Failed to remove existing directory for %s!'
 messages[repo_remove_failed,ru]='Не удалось удалить существующую директорию для %s!'
@@ -1264,7 +1173,7 @@ function specify_log_lvl() {
         return 0
       fi
     done
-    log "ERROR" unknown_option "${default_choice}"
+    log "ERROR" unknown_option "${choice}"
   done
 }
 
@@ -1278,8 +1187,6 @@ function 10__setup_configs() {
   local master_id
   read -rp "${master_id_prompt}" master_id
   master_id="${master_id:-${default_master_id}}"
-
-  export SALTBOX_MASTER_ID="${master_id}"
 
   master_log_lvl=$(specify_log_lvl \
     specify_log_lvl \
@@ -1385,138 +1292,6 @@ function 11__enable_master_service() {
   fi
 }
 
-function is_valid_count() {
-  local count="${1}"
-  if [[ ! "${count}" =~ ${positive_int_regex} ]]; then
-    return 1
-  fi
-  return 0
-}
-
-function specify_evil_master_ip() {
-
-  local choice_msg
-  choice_msg="$(log "INFO" evil_master_ip_choice "${default_evil_master_ip}")"
-
-  local mode
-  while true; do
-
-    read -rp "${choice_msg}" mode
-    mode="${mode:-1}"
-
-    case "${mode}" in
-      "1")
-        printf "%s" "${default_evil_master_ip}"
-        return 0
-        ;;
-      "2")
-        get_validated_input \
-          specify_evil_master_ip \
-          invalid_ip_format \
-          is_valid_ip
-        return 0
-        ;;
-      *)
-        log "WARN" unknown_option "${mode}"
-        ;;
-    esac
-  done
-}
-
-function 12__install_evil_if_requested() {
-
-  local install_evil_prompt
-  install_evil_prompt=$(log "INFO" confirm_install_evil)
-
-  local install_evil_answer
-  read -rp "${install_evil_prompt}" install_evil_answer 
-  install_evil_answer="${install_evil_answer:-n}"
-
-  if [[ "${install_evil_answer}" != "y" ]]; then
-    log "INFO" install_evil_skipped
-    exit 0
-  fi
-
-  log "INFO" install_evil
-
-  local evil_master_ip
-  evil_master_ip="$(specify_evil_master_ip)"
-
-  local evil_count
-  evil_count="$(get_validated_input \
-    specify_evil_count \
-    invalid_count_format \
-    is_valid_count \
-    "${default_evil_count}")"
-
-  local minion_override_master_conf_path
-  minion_override_master_conf_path="${minion_override_conf_path}/master.conf"
-
-  local override_content
-  override_content="master: ${evil_master_ip}"
-
-  write_to_file "${override_content}" "${minion_override_master_conf_path}"
-
-  local minion_override_waiting_conf_path
-  minion_override_waiting_conf_path="${minion_override_conf_path}/waiting.conf"
-
-  write_to_file "${evil_override_wating_content}" "${minion_override_waiting_conf_path}"
-
-  local repo_name="Salt Evil Minions"
-  clone_repository "${repo_evil_url}" "${evil_path}" "${repo_name}"
-
-  local evil_systemd_dir="${evil_path}/systemd"
-
-  log "INFO" evil_systemd_installing
-
-  local -a evil_systemd_files=(
-    "${evil_systemd_dir}/evil-minions.service"
-    "${evil_systemd_dir}/evil-minions-restart.service"
-    "${evil_systemd_dir}/evil-minions-restart.timer"
-  )
-
-  local systemd_cp_cmd
-  systemd_cp_cmd=(cp -av "${evil_systemd_files[@]}" "${etc_system_path}/")
-
-  if ! run_indented "${systemd_cp_cmd[@]}"; then
-    log "ERROR" evil_systemd_install_failed
-    exit 1
-  fi
-
-  local evil_env_cp_cmd
-  evil_env_cp_cmd=(cp -av "${evil_systemd_dir}/evil-minions.env" "/etc/")
-
-  if ! run_indented "${evil_env_cp_cmd[@]}"; then
-    log "ERROR" evil_env_install_failed
-    exit 1
-  fi
-  log "INFO" evil_systemd_install_success
-
-  local evil_log_lvl
-  evil_log_lvl=$(specify_log_lvl \
-    specify_evil_log_lvl \
-    "" \
-    "${default_entity_log_lvl}" \
-    "${evil_log_lvl_map[@]}")
-
-  local evil_env_override_content
-  # shellcheck disable=SC2059
-  printf -v evil_env_override_content \
-    "${evil_env_override_content_tpl}" \
-    "${evil_count}" \
-    "${evil_log_lvl}"
-
-  write_to_file "${evil_env_override_content}" "${evil_env_path}"
-
-  local system_service_name="evil-minions"
-  local restart_service_name="evil-minions-restart.timer"
-
-  enable_system_service "${system_service_name}"
-  enable_system_service "${restart_service_name}"
-
-  log "INFO" install_evil_success
-}
-
 function compleate_stages() {
   00__is_root
   01__display_tittle
@@ -1530,7 +1305,6 @@ function compleate_stages() {
   09__install_bridge
   10__setup_configs
   11__enable_master_service
-  12__install_evil_if_requested
 }
 
 for i in "$@"; do
