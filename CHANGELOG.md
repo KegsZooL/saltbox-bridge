@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `install_master.sh`: interactive installer script for a secondary Salt Master systemd-service.
-- `install_evil.sh`: interactive installer script for a Salt Evil Minions service.
+- `install_evil.sh`: interactive installer script for a Salt Evil Minions systemd-service.
 
 ### Changed
 

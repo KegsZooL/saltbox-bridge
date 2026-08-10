@@ -2,7 +2,7 @@
 
 ## Description
 Bridge component is a set of additional SaltStack modules to connect Salt
-master to Salt.Box.
+master to Salt.Box
 
 Currently supported salt-master versions:
 - 3007.13
@@ -10,17 +10,17 @@ Currently supported salt-master versions:
 ## Salt files hierarhy
 
 - `/srv/salt_custom/` is for user's custom files managed with Salt.Box File
-  Browser.
+  Browser
 - `/srv/saltbox_salt/` is a part of Salt.Box system to replicate states from
-packages.
-- `/srv/salt_local/` is for local Salt.Box states and modules.
+packages
+- `/srv/salt_local/` is for local Salt.Box states and modules
 - `/srv/salt_master_local/` is for the Master local minion Salt.Box service states and
-modules.
+modules
 - `/srv/salt_extmod/` is for "external modules". There are some distributed
-  with this repository. It is possible to put some custom modules here also.
-- `/srv/sshfs/` for files to serve both as `ssh://` and `salt://`.
+  with this repository. It is possible to put some custom modules here also
+- `/srv/sshfs/` for files to serve both as `ssh://` and `salt://`
 - `/srv/migrator/` — directory of Salt files related to the migration process, accessible
-  via the filebrowser when `FILEBROWSER_MIGRATOR_SOURCE_ENABLED` flag is enabled.
+  via the filebrowser when `FILEBROWSER_MIGRATOR_SOURCE_ENABLED` flag is enabled
 
 ## Installing a secondary Salt Master
 
@@ -36,7 +36,7 @@ For a fully manual, step-by-step walkthrough of the same process see the
 
 - A host with network access to the SaltBox Redis instance by **IP address**
   (hostnames are not accepted by the script's prompts) and its port (`6379`
-  by default).
+  by default)
 - The `redis-ca.crt` authority certificate issued by the SaltBox instance.
   Obtain it from the SaltBox side with
   [Salt.Box Compose](https://dev.saltbox.pro/saltbox/saltbox-compose), e.g.:
@@ -47,7 +47,7 @@ For a fully manual, step-by-step walkthrough of the same process see the
 
 > **ATTENTION!** The script must be run as root. It installs system packages,
 > writes to `/etc/salt/`, `/etc/apt/`, and enables the `salt-master` systemd
-> service.
+> service
 
 ### Quick start
 
@@ -72,40 +72,40 @@ sudo ./bin/install_master.sh --en_locale
 1. Installs the `redis-ca.crt` certificate (auto-detected next to the script,
    or at a path you provide) to `/etc/salt/ssl/redis-ca.crt`.
 2. Checks connectivity to the SaltBox Redis instance at the IP address and
-   port you provide.
+   port you provide
 3. Installs required system packages (`curl`, `git`, `rsync`, `gettext`,
-   etc.).
-4. Installs Salt from the official APT repository.
-5. Creates the [Salt files hierarchy](#salt-files-hierarhy) directories.
+   etc.)
+4. Installs Salt from the official APT repository
+5. Creates the [Salt files hierarchy](#salt-files-hierarhy) directories
 6. Clones or updates the [`saltbox-bridge`](https://dev.saltbox.pro/saltbox/saltbox-bridge)
-   repository next to the script.
+   repository next to the script
 7. Syncs Bridge files into the Salt directories above and installs the Bridge
-   Python package.
+   Python package
 8. Renders `/etc/salt/master`, `/etc/salt/minion`, and `/etc/salt/saltbox`
    from the Bridge [`master/templates/`](./master/templates) files, filled in
-   with the SaltBox connection details.
-9. Enables and restarts the `salt-master` service.
-10. Disables `salt-minion`, since a secondary master does not run its own minion.
+   with the SaltBox connection details
+9. Enables and restarts the `salt-master` service
+10. Disables `salt-minion`, since a secondary master does not run its own minion
 
 ### Interactive prompts
 
 During the run you will be asked to:
 
 - provide the `redis-ca.crt` certificate — either let the script search the
-  current directory automatically, or specify a path;
-- provide the SaltBox IP address and Redis port;
+  current directory automatically, or specify a path
+- provide the SaltBox IP address and Redis port
 - choose a Salt master ID (defaults to `master-<timestamp>`) and a log level
   for the master and the minion, selected separately on a `0`–`9` scale (see
   [Salt logging
   levels](https://docs.saltproject.io/en/latest/ref/configuration/logging/index.html));
-  default is `1` (`info`);
+  default is `1` (`info`)
 - provide the Redis username (default `redis`) and password used by the
-  `saltbox` config.
+  `saltbox` config
 
 > **NOTE:** If a local copy of `saltbox-bridge` already exists next to the
 > script, you will be asked whether to reuse it or re-clone. Re-cloning
 > **PERMANENTLY DELETES** the local copy, and you will be warned separately
-> if it has uncommitted changes.
+> if it has uncommitted changes
 
 ### Re-running the script
 
@@ -115,3 +115,69 @@ time.
 
 Re-running is the **recommended** way to pick up updated Bridge templates
 or to change the master ID, log levels, or Redis credentials.
+
+## Installing Salt Evil Minions
+
+The [`bin/install_evil.sh`](./bin/install_evil.sh) script installs and starts
+[Salt Evil Minions](https://dev.saltbox.pro/saltbox/saltbox-evil-minions) — a
+configurable number of evil minions connecting to a real `salt-master`.
+
+The script is independent of `install_master.sh` and does not clone or
+install `saltbox-bridge` — it only needs the Salt onedir runtime to already
+be present on the host.
+
+### Requirements
+
+- The Salt onedir runtime already installed at
+  `/opt/saltstack/salt/bin/python3` — e.g. via `install_master.sh`, or a
+  regular `salt-minion`/`salt-master` package
+- The **IP address** of the target master, accessible from this host via ports `4505`/`4506`
+
+> **ATTENTION!** The script must be run as root. It writes to
+> `/etc/salt/minion.d/`, `/etc/systemd/system/`, `/etc/evil-minions.env`, and
+> enables the `evil-minions` and `evil-minions-restart.timer` systemd units
+
+### Quick start
+
+```bash
+sudo ./bin/install_evil.sh
+```
+
+Use `--en_locale` or `--ru_locale` to select the language of interactive
+prompts and log messages (Russian is the default). Use `-h`/`--help` to print
+the full option list and a summary of what the script does.
+
+```bash
+sudo ./bin/install_evil.sh --en_locale
+```
+
+### What it does
+
+1. Verifies that the Salt onedir runtime is present at
+   `/opt/saltstack/salt/bin/python3`
+2. Asks which master IP address evil-minions should connect to and how many
+   evil minions to run
+3. Writes `/etc/salt/minion.d/master.conf` and `/etc/salt/minion.d/waiting.conf`
+   overrides
+4. Clones the [`saltbox-evil-minions`](https://dev.saltbox.pro/saltbox/saltbox-evil-minions)
+   repository to `/opt/saltstack/evil-minions`
+5. Installs its systemd units (`evil-minions.service`,
+   `evil-minions-restart.service`, `evil-minions-restart.timer`) and its
+   `/etc/evil-minions.env` env file
+6. Asks for the evil-minions log level
+7. Enables and restarts the `evil-minions` and `evil-minions-restart.timer`
+   services
+
+### Interactive prompts
+
+During the run you will be asked to:
+
+- choose the target master address — either the local master on this host
+  (`127.0.0.1`) or a custom **IP address**
+- specify the number of evil minions to run (default `100`)
+- choose a log level for evil-minions on a `1`-`5` scale (`INFO`, `WARNING`,
+  `ERROR`, `CRITICAL`, `DEBUG`; default is `1`/`INFO`)
+
+> **NOTE:** re-running the script re-clones `saltbox-evil-minions` from
+> deleting any local copy and re-renders the minion overrides,
+> systemd units, and evn file
