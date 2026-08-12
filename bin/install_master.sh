@@ -104,6 +104,8 @@ declare -r default_redis_user="redis"
 declare -A messages
 declare -r log_pause_seconds=0.5
 
+declare -r backspace_ascii=$'\x7f'
+
 messages[tittle,en]='
    ####################################################
  ########################################################
@@ -1028,13 +1030,13 @@ function confirm_delete_local_bridge() {
 
 function 07__prepare_saltbox_bridge() {
 
+  local repo_name="SaltBox Bridge"
+  local use_local
+  local prompt
+
   log "INFO" prepare_salt_bridge
 
   if [[ -d "${bridge_dir}" ]]; then
-
-    local repo_name="SaltBox Bridge"
-    local use_local
-    local prompt
 
     prompt="$(log "INFO" use_local_bridge)"
     read -rp "${prompt}" use_local
@@ -1177,6 +1179,36 @@ function specify_log_lvl() {
   done
 }
 
+function read_pwd_with_asterisks() {
+  local prompt="${1}"
+  local pwd=""
+  local input_char
+
+  local tty_dir=/dev/tty
+
+  printf "%s" "${prompt}" > "${tty_dir}"
+
+  while IFS= read -rsn 1 input_char < "${tty_dir}"; do
+    if [[ -z "${input_char}" ]]; then
+      # Enter pressed
+      break
+    fi
+
+    if [[ "${input_char}" == "${backspace_ascii}" ]]; then
+      if [[ -n "${pwd}" ]]; then
+        pwd="${pwd%?}"
+        printf "\b \b" > "${tty_dir}"
+      fi
+      continue
+    fi
+    pwd+="${input_char}"
+    printf "*" > "${tty_dir}"
+  done
+
+  printf "\n" > "${tty_dir}"
+  printf "%s" "${pwd}"
+}
+
 function 10__setup_configs() {
 
   log "INFO" setup_configs_start
@@ -1226,7 +1258,7 @@ function 10__setup_configs() {
 
   local redis_pwd
   while true; do
-    read -rp "${redis_pwd_prompt}" redis_pwd
+    redis_pwd=$(read_pwd_with_asterisks "${redis_pwd_prompt}")
     if [[ -n "${redis_pwd}" ]]; then
       break
     fi
