@@ -1,4 +1,4 @@
-# Copyright 2025 Anton Karmanov
+# Copyright 2025-2026 Anton Karmanov
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,10 +24,10 @@ import sys
 from collections.abc import Generator
 from functools import lru_cache
 
-if sys.version_info >= (3, 9):  # noqa: UP036
+if sys.version_info >= (3, 9):
     from collections.abc import Iterable
 else:
-    from typing import Iterable  # noqa: UP035
+    from typing import Iterable
 
 from enum import Enum
 from typing import Any, ClassVar
@@ -323,7 +323,7 @@ def _get_known_agents() -> list[InventoryAgent]:
     return agents
 
 
-@lru_cache(maxsize=None)  # noqa: UP033
+@lru_cache(maxsize=None)
 def _lookup_inventory_agent() -> InventoryAgent:
     known_agents = _get_known_agents()
     for agent in known_agents:

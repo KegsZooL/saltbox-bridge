@@ -181,3 +181,9 @@ During the run you will be asked to:
 > **NOTE:** re-running the script re-clones `saltbox-evil-minions` from
 > deleting any local copy and re-renders the minion overrides,
 > systemd units, and evn file
+
+## Development
+
+```bash
+uv sync --project saltbox_bridge --extra dev,salt
+```

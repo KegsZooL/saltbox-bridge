@@ -16,9 +16,12 @@ Repository = "https://dev.saltbox.pro/salt.box"
 
 [project.optional-dependencies]
 dev = [
-  "mypy>=1.15.0",
-  "pre-commit>=4.2.0",
-  "ruff==0.15.13",
+  "ipython",
+  "mypy",
+  "pre-commit",
+  "pylsp-mypy",
+  "python-lsp-server[all]",
+  "ruff",
   "types-redis",
 ]
 salt = [
@@ -131,3 +134,5 @@ version = { attr = "saltbox_bridge.__version__" }
 
 [tool.setuptools_scm]
 fallback_version = "0.0.0"
+
+# vi: sw=2
