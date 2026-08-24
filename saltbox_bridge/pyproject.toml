@@ -88,17 +88,17 @@ select = [
   "TD",  # flake8-todo
 ]
 ignore = [
-  # 'E402'    # module level import not at top of file
-  "E722",  # do not use bare except
+  "bare-except",
   "ERA",  # do not autoremove commented out code
-  "N818",  # error-suffix-on-exception-name
-  "S404",  # suspicious-subprocess-import
-  "TD002",  # Missing author in TODO
-  "TD003",  # Found TODO in code
-  "UP040",  # type instead of TypeAlias PEP 695'
+  "error-suffix-on-exception-name",
+  "noqa-comments",
+  "suspicious-subprocess-import",
+  "missing-todo-author",
+  "missing-todo-link",
+  "non-pep695-type-alias",
 ]
 fixable = ["ALL"]
-unfixable = ["F401", "F841", "UP035"]
+unfixable = ["unused-import", "unused-variable", "deprecated-import"]
 
 [tool.ruff.lint.flake8-quotes]
 docstring-quotes = "single"
@@ -109,16 +109,18 @@ multiline-quotes = "single"
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.*" = ["S101", "DTZ", "EM101", "RUF012", "E712"]
-"**/__init__.py" = ["I002"]
-# '*/models.py' = ['UP007']
-# '*/schemas.py' = ['UP007']
+"tests/**/*.*" = [
+  "assert",
+  "DTZ",
+  "raw-string-in-exception",
+  "mutable-class-default",
+  "true-false-comparison",
+]
+"**/__init__.py" = ["missing-required-import"]
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
 known-first-party = [
-  # 'engines',
-  # 'runners',
   "saltbox_bridge"
 ]
 

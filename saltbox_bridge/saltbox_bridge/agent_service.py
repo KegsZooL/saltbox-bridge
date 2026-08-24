@@ -59,10 +59,11 @@ async def _async_start(salt_opts: dict | None) -> None:
         context.set_global('core_connector', core_connector)
         context.set_global('salt_caller', salt_caller)
 
-        yield
-
-        del salt_connector
-        del redis_client
+        try:
+            yield
+        finally:
+            del salt_connector
+            del redis_client
 
     router = build_router(salt_master)
     app = get_faststream_app(

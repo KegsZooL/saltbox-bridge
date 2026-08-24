@@ -29,11 +29,11 @@ select = [
   "TD",  # flake8-todo
 ]
 ignore = [
-  "S404", "S603", # subprocess
-  "S314", "S405", # XML parsing
+  "suspicious-subprocess-import", "subprocess-without-shell-equals-true",
+  "suspicious-xml-element-tree-usage", "suspicious-xml-etree-import",
 ]
 fixable = ["ALL"]
-unfixable = ["F401", "F841", "UP035"]
+unfixable = ["unused-import", "unused-variable", "deprecated-import"]
 
 [lint.flake8-quotes]
 docstring-quotes = "single"
