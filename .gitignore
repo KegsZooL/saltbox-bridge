@@ -23,5 +23,6 @@ htmlcov/
 *.vim
 
 # Other
+.DS_Store
 /.gitlab-ci-local
 /_*
